@@ -33,5 +33,5 @@ dev = ["pytest", "pytest-cov"]
 gadaj = "gadaj.cli:main"
 
 [project.urls]
-Homepage   = "https://github.com/synsigma/gadaj"
-Repository = "https://github.com/synsigma/gadaj"
+Homepage   = "https://github.com/sjjsy/gadaj"
+Repository = "https://github.com/sjjsy/gadaj"
