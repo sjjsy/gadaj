@@ -26,14 +26,14 @@ _DEFAULT_PRICING: dict[str, tuple[float, float, float, float]] = {
 
 _DEFAULT_AUTHORS: dict[str, str] = {
     "Samuel Sydänlammi": "Samuel",
-    "Mikko Sysikaski":   "Mikko",
+    "Mikko Lastname":   "Mikko",
     "Vault":             "Vault",
 }
 
 _DEFAULT_CONFIG_TOML = """\
 [authors]
 "Samuel Sydänlammi" = "Samuel"
-"Mikko Sysikaski"   = "Mikko"
+"Mikko Lastname"   = "Mikko"
 "Vault"             = "Vault"
 
 [pricing]

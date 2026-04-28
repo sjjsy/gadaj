@@ -1,4 +1,4 @@
-GADAJ:f4b7d3e	1777314600	Mikko Sysikaski	Old commit outside window
+GADAJ:f4b7d3e	1777314600	Mikko Lastname	Old commit outside window
 
  docs/old_notes.md | 5 +++++
  1 file changed, 5 insertions(+)
@@ -15,7 +15,7 @@ GADAJ:a3e9b21	1777372200	Samuel Sydänlammi	Add initial models
  gadaj/models.py   | 45 +++++++++++++++++++++++++++
  2 files changed, 48 insertions(+)
 
-GADAJ:7c4f891	1777374300	Mikko Sysikaski	Review and refactor models
+GADAJ:7c4f891	1777374300	Mikko Lastname	Review and refactor models
 
  gadaj/models.py | 12 ++++++------
  1 file changed, 6 insertions(+), 6 deletions(-)
@@ -30,7 +30,7 @@ GADAJ:9e1f7c8	1777376700	Samuel Sydänlammi	Add config module
  gadaj/config.py | 89 ++++++++++++++++++++++++++++++++++++
  1 file changed, 89 insertions(+)
 
-GADAJ:e3a8b5d	1777378500	Mikko Sysikaski	Add collector base class
+GADAJ:e3a8b5d	1777378500	Mikko Lastname	Add collector base class
 
  gadaj/collectors/__init__.py |  0
  gadaj/collectors/base.py     | 18 ++++++++++++

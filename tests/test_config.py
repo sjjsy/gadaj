@@ -29,7 +29,7 @@ def test_resolve_nick_unknown():
 
 def test_resolve_nick_mikko():
     cfg = _default_cfg()
-    assert resolve_nick("Mikko Sysikaski", cfg) == "Mikko"
+    assert resolve_nick("Mikko Lastname", cfg) == "Mikko"
 
 
 # ---------------------------------------------------------------------------
