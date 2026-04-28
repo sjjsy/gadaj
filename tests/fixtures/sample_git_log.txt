@@ -1,0 +1,49 @@
+GADAJ:f4b7d3e	1777314600	Mikko Sysikaski	Old commit outside window
+
+ docs/old_notes.md | 5 +++++
+ 1 file changed, 5 insertions(+)
+
+GADAJ:51d38b6	1777370520	Samuel Sydänlammi	Draft workflow setup
+
+ design.md | 25 +++++++++++++++++++++++++
+ README.md  | 15 +++++++++++++++
+ 2 files changed, 40 insertions(+)
+
+GADAJ:a3e9b21	1777372200	Samuel Sydänlammi	Add initial models
+
+ gadaj/__init__.py |  3 +++
+ gadaj/models.py   | 45 +++++++++++++++++++++++++++
+ 2 files changed, 48 insertions(+)
+
+GADAJ:7c4f891	1777374300	Mikko Sysikaski	Review and refactor models
+
+ gadaj/models.py | 12 ++++++------
+ 1 file changed, 6 insertions(+), 6 deletions(-)
+
+GADAJ:2b6d3a4	1777375800	Samuel Sydänlammi	Implement utils module
+
+ gadaj/utils.py | 67 ++++++++++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 67 insertions(+)
+
+GADAJ:9e1f7c8	1777376700	Samuel Sydänlammi	Add config module
+
+ gadaj/config.py | 89 ++++++++++++++++++++++++++++++++++++
+ 1 file changed, 89 insertions(+)
+
+GADAJ:e3a8b5d	1777378500	Mikko Sysikaski	Add collector base class
+
+ gadaj/collectors/__init__.py |  0
+ gadaj/collectors/base.py     | 18 ++++++++++++
+ 2 files changed, 18 insertions(+)
+
+GADAJ:c1f2e9a	1777380300	Samuel Sydänlammi	Implement GitCollector
+
+ gadaj/collectors/git.py | 95 +++++++++++++++++++++++++++++++++++++++
+ 1 file changed, 95 insertions(+)
+
+GADAJ:b8e3d71	1777381800	Samuel Sydänlammi	Add tests and fixtures
+
+ tests/conftest.py              | 42 ++++++++++++++++++++++
+ tests/fixtures/sample.jsonl   | 35 ++++++++++++++++++
+ tests/test_git_collector.py   | 28 ++++++++++++++
+ 3 files changed, 105 insertions(+)

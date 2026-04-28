@@ -3,7 +3,17 @@
     "allow": [
       "Bash(git -C /home/samsy/snc/git/aib/projects/gadaj log --oneline)",
       "Bash(git add *)",
-      "Bash(git commit -m ' *)"
+      "Bash(git commit -m ' *)",
+      "Bash(pip install *)",
+      "Read(//usr/bin/**)",
+      "Read(//home/samsy/.local/bin/**)",
+      "Read(//snap/bin/**)",
+      "Bash(command -v pyenv)",
+      "Bash(pyenv versions *)",
+      "Read(//home/samsy/.pyenv/**)",
+      "Bash(python *)",
+      "Bash(python3 *)",
+      "Bash(gadaj *)"
     ]
   }
 }
