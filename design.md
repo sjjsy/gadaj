@@ -1,7 +1,7 @@
 # gadaj — Technical Design
 
 > **Git and AI Data Aggregator for Journaling**
-> This document is the authoritative technical reference for contributors and for AI coding agents implementing or extending `gadaj`. For product goals, competition analysis, and CLI spec, see `spec.md`.
+> This document is the authoritative technical reference for contributors and for AI coding agents implementing or extending `gadaj`. For product goals, competition analysis, and CLI spec, see `README.md`.
 
 ---
 
@@ -10,8 +10,8 @@
 - **Collect, don't interpret.** `gadaj` gathers raw evidence and presents it. It does not write prose, infer task intent, or make editorial judgments about the work. That is the user's job.
 - **Source attribution is inviolable.** Git data and AI session data are never silently merged. Every output section carries its source label. This is both a UX principle and a correctness requirement — a commit timestamp and a CC session timestamp may refer to the same work, but they are different facts from different systems.
 - **Time is the only join key.** All sources are queried against a common time window. No IDs, no enforced commit message conventions, no external tracker required. The complexity of cross-source correlation is pushed to the user, not the tool.
-- **Zero runtime dependencies at v0.1.** The tool installs in one command and runs anywhere Python 3.11+ is present. Dependencies are added only when they earn their place — not for convenience.
-- **Refactor, don't rewrite.** All logic in `journal_facility.py` is correct and tested in production. The migration path is restructuring, not replacement.
+- **Minimal runtime dependencies.** The tool installs in one command and runs on Python 3.8+. The only runtime dependency is `tomli` (TOML parser) on Python < 3.11; on Python 3.11+ the stdlib `tomllib` module is used. No other runtime dependencies.
+- **Refactored from `journal_facility.py`.** The core logic (JSONL parsing, cost calculation, git helpers) was migrated from the original single-file script into a proper package.
 
 ---
 
@@ -22,7 +22,7 @@ gadaj/                          ← installable package
 │
 ├── __init__.py                 ← version string only: __version__ = "0.1.0"
 ├── cli.py                      ← argparse entrypoint, orchestration
-├── config.py                   ← config file loading, AUTHOR_NICKS, PRICING
+├── config.py                   ← config file loading, author nicks, model pricing
 ├── models.py                   ← all dataclasses
 ├── utils.py                    ← pure functions: formatting, time parsing
 │
@@ -40,6 +40,7 @@ gadaj/                          ← installable package
 pyproject.toml
 README.md
 CHANGELOG.md
+DECISIONS.md                    ← judgment calls made during implementation
 design.md                       ← this file
 LICENSE
 tests/
@@ -52,8 +53,9 @@ tests/
     test_markdown_reporter.py
     test_json_reporter.py
     fixtures/
-        sample.jsonl            ← minimal CC session transcript
-        sample_git_log.txt      ← raw git log --format output
+        sample.jsonl            ← CC session 1 (10:02–11:47 UTC, two models)
+        sample2.jsonl           ← CC session 2 (12:20–13:24 UTC, gap detection)
+        sample_git_log.txt      ← git log --stat output with Unix timestamps
 ```
 
 ---
@@ -182,19 +184,27 @@ class Collector(ABC):
 
 ### GitCollector (`collectors/git.py`)
 
-Wraps `git log` and `git diff --stat` via `subprocess`. All git interaction is isolated here — no subprocess calls elsewhere in the codebase.
+Wraps `git log --stat` via `subprocess`. All git interaction is isolated here —
+no subprocess calls elsewhere in the codebase.
 
 Key responsibilities:
 - Resolve `--git-range` (explicit hash range) or derive a `--since`/`--until` range from the window
-- Map author names to nicks via `config.AUTHOR_NICKS`
-- Parse diff stat into `files_changed`, `insertions`, `deletions` per commit
+- Map author names to nicks via `config.authors`
+- Parse per-commit diff stats (`files_changed`, `insertions`, `deletions`) from `--stat` output
 - Return `list[Commit]` sorted ascending by datetime
-- Return `[]` gracefully if git is not on PATH or cwd is not a repo (set `available = False`)
+- Return `[]` gracefully if git is not on PATH or cwd is not a repo (`available = False`)
 
-Internal helpers (migrated from `journal_facility.py`):
-- `_git_log(since, until, author, filter_pattern) -> list[Commit]`
-- `_git_diff_stat(hash_range) -> tuple[int, int, int]`
-- `_resolve_author(raw_name) -> str`
+**Implementation note:** The git log format uses `%at` (author date as Unix timestamp,
+UTC) rather than a formatted date string. This avoids timezone ambiguity when the
+committer's local timezone differs from the tool's runtime timezone.
+
+Time window arguments are passed with explicit `+00:00` UTC offset
+(`--after=2026-04-28T10:00:00+00:00`) so git does not misinterpret UTC times as
+local time.
+
+Internal helpers:
+- `_parse_log_stat(output, cfg) -> list[Commit]`
+- `_parse_stat_summary(line) -> tuple[int, int, int]`
 
 ### CCCollector (`collectors/cc.py`)
 
@@ -316,7 +326,7 @@ Config is loaded once at startup and stored as a module-level singleton. The loa
 2. User config: `~/.config/gadaj/config.toml` (created with defaults on first run if absent)
 3. Project config: `<cwd>/.gadaj.toml` (optional, overrides user config for that repo)
 
-`tomllib` (stdlib in Python 3.11+) handles parsing. No third-party config library.
+`tomllib` (stdlib in Python 3.11+) handles parsing on modern Python. On Python 3.8–3.10, the `tomli` package (a dependency) provides the same interface under `tomli`. The import is handled transparently in `config.py`. If neither is available, config file loading is skipped with a warning and built-in defaults are used.
 
 ```python
 @dataclass
@@ -411,7 +421,7 @@ Every module has a corresponding test file. The coverage target for v0.1 is 80% 
 
 `tests/fixtures/sample.jsonl` — a minimal but realistic CC session transcript with at least two models and cache tokens. Should cover: multiple assistant turns, one tool use, one gap of > 30 minutes (to test gap detection).
 
-`tests/fixtures/sample_git_log.txt` — raw output of `git log --format=%h\t%ad\t%an\t%s --date=format:%Y-%m-%d %H:%M` for a fictional repo. At least 5 commits, two authors, one commit outside any test window.
+`tests/fixtures/sample_git_log.txt` — output of `git log --format=GADAJ:%h\t%at\t%an\t%s --stat --reverse` for a fictional repo. Uses Unix timestamps (`%at`) for timezone-correct parsing. At least 9 commits, two authors, one commit outside the test window to verify filtering.
 
 ### No subprocess in tests
 
@@ -442,25 +452,28 @@ dev = ["pytest", "pytest-cov"]
 
 ---
 
-## 11. Migration from `journal_facility.py`
+## 11. Origins
 
-The existing script is production-tested. The migration is a refactor, not a rewrite.
+`gadaj` was refactored from `journal_facility.py`, a single-file script that
+produced journal entry tables from a CC session and a git range. The core logic
+was preserved and reorganised:
 
-| `journal_facility.py` function | Destination in `gadaj` |
+| Original function | Destination in `gadaj` |
 |---|---|
-| `parse_session()` | `CCCollector._parse_session()` |
+| `parse_session()` | `CCCollector._parse_session()` in `collectors/cc.py` |
 | `compute_cost()` | `config.lookup_pricing()` + inline in `CCCollector` |
-| `find_project_dir()` | `CCCollector._find_project_dir()` |
+| `find_project_dir()` | `CCCollector._find_project_dir()` in `collectors/cc.py` |
 | `find_current_session()` | absorbed into `CCCollector.collect()` |
 | `git_commit_table()` | `MarkdownReporter._commits_table()` |
-| `git_diff_stat()` | `GitCollector._git_diff_stat()` |
-| `git_commit_summary()` | `GitCollector._git_commit_summary()` |
+| `git_diff_stat()` | `GitCollector` via `--stat` parsing |
 | `fmt_tok()` | `utils.fmt_tok()` |
 | `fmt_duration()` | `utils.fmt_duration()` |
 | `AUTHOR_NICKS` | `config.toml [authors]` + `config.py` defaults |
 | `PRICING` | `config.toml [pricing]` + `config.py` defaults |
 
-During migration, keep `journal_facility.py` in the repo root as a deprecated shim that prints a one-line deprecation warning and calls `gadaj.cli.main()`. Remove in v0.2.
+The main behavioural change: `gadaj` scans **all** CC sessions in the time window
+rather than defaulting to the single most recent `.jsonl` file. Use `--cc-file`
+if you want the old single-file behaviour.
 
 ---
 

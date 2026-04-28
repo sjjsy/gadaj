@@ -1,1 +1,0 @@
-../../scripts/journal_facility.py

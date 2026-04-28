@@ -13,50 +13,72 @@ alongside humans on the same codebase. `gadaj` is the missing link between raw
 session transcripts and a coherent record of the day's work.
 
 ```
-══ GIT  2026-04-28 10:00 – 13:25 EEST ════════════════════════════
+══ GIT  2026-04-28 10:00 – 13:25 EEST ════════════════════════════════
 
   Commits   8 · 51d38b6 – e60d59b
   Authors   Samuel (8)
   Files     7 changed · +672 / -7
 
-══ CLAUDE CODE  2026-04-28 10:00 – 13:25 EEST ════════════════════
+══ CLAUDE CODE  2026-04-28 10:00 – 13:25 EEST ════════════════════════
 
   Sessions  2 in window
 
   Session 1  10:02 – 11:47  ~1.7h
   Session 2  12:10 – 13:24  ~1.2h   ← most recent
 
-  Model                In     Out    Cache↑   Cache↓    Cost
-  claude-sonnet-4-6   180k   174k    293k     9.6M    ~$6.59
-  ──────────────────────────────────────────────────────────
-  2 sessions total                                    ~$6.59
+  Model                      In    Out   Cache↑   Cache↓      Cost
+  claude-sonnet-4-6         180k  174k    293k     9.6M    ~$6.59
+  ──────────────────────────────────────────────────────────────────
+  2 sessions total                                          ~$6.59
 
-══ SUMMARY ════════════════════════════════════════════════════════
+══ SUMMARY ═══════════════════════════════════════════════════════════
 
   Window    ~3.4h  (2026-04-28 10:00 – 13:25 EEST)
   Git       8 commits · Samuel
   CC        2 sessions · claude-sonnet-4-6 · ~$6.59
-  Total                                              ~$6.59
+  Total                                                     ~$6.59
 ```
 
 ---
 
 ## Why gadaj?
 
-Most teams using AI coding agents quickly notice a gap: the agent produces
-work, but there is no easy way to see what happened across a session, who
-contributed what, or what it cost — especially when a human and one or more
-agents are working in parallel or in sequence on the same repo.
+A new category of small human+AI teams has emerged — 2–5 people working alongside
+Claude Code, Aider, or other coding agents on the same codebase simultaneously or
+in sequence. These teams quickly notice a gap: the agent produces work, but there
+is no easy way to see what happened across a session, who contributed what, or
+what it cost — especially when a human and one or more agents are working in
+parallel or in sequence on the same repo.
 
-Existing tools solve only half the problem. CC session analyzers (ccusage,
-claude-monitor, ccstats) track token consumption and cost but know nothing
-about git. Git analytics tools (git-quick-stats, gitinspector) know commits
-intimately but have no awareness of AI agents or session cost. No tool
-combines both into a time-windowed, multi-contributor work log.
+**Existing tools cover only half the picture:**
 
-`gadaj` fills that gap. It is not a task tracker, narrative generator, or
-project manager. It collects evidence and presents it clearly. You decide
-what story to tell.
+CC session analytics tools (**ccusage**, **claude-monitor**, **ccstats**,
+**claude-token-analyzer**) are purely consumption-focused — tokens in, dollars
+out, plan limits. They have no awareness of git history and no concept of a
+"work period" that spans multiple sessions or contributors.
+
+Git analytics tools (**git-quick-stats**, **gitinspector**, **git-dev-time**,
+**git-journal**) know commits intimately but have zero awareness of AI agents,
+session costs, or model usage.
+
+AI commit/report tools (**commitloom**, **ai-git-cli**, **wsr**) generate text
+from git history but don't aggregate multi-source activity data.
+
+The closest adjacent project is **git-ai** (git-ai-project), which tracks AI
+attribution at the line level — but it solves code provenance and review, not
+work logging.
+
+**The gap:** no tool combines git history + AI session data + multi-contributor
+time-windowed aggregation into a work log oriented toward human-readable output.
+`gadaj` fills this gap. It is not a task tracker, narrative generator, or project
+manager. It collects evidence and presents it clearly. You decide what story
+to tell.
+
+| Tool | Question answered |
+|---|---|
+| ccusage, claude-monitor | Am I about to hit my token limit? |
+| git-quick-stats, gitinspector | How active is this repo over time? |
+| **gadaj** | What did our team (human + AI) actually do in this window? |
 
 **On the name:** like `grep` or `awk`, `gadaj` is a proper noun that earns
 independence from its expansion. The acronym is a mnemonic, not a contract —
@@ -71,7 +93,8 @@ PyPI and GitHub at time of writing.
 pip install gadaj
 ```
 
-Requires Python 3.11+. No runtime dependencies — stdlib only.
+Requires Python 3.8+. Depends only on `tomli` (automatically installed for
+Python < 3.11; stdlib `tomllib` is used on Python 3.11+).
 
 ---
 
@@ -103,7 +126,7 @@ All sources are queried against a single time window. These flags control it.
 | Flag | Short | Default | Description |
 |---|---|---|---|
 | `--window DURATION` | `-w` | `4h` | Look back from now: `2h`, `1.5d`, `90m` |
-| `--since DATETIME` | `-s` | — | Window start. ISO date/datetime, `"yesterday"`, `"today"`, `"N hours ago"` |
+| `--since DATETIME` | `-s` | — | Window start. ISO date/datetime, `"yesterday"`, `"today"`, `"N hours ago"`, weekday name |
 | `--until DATETIME` | `-u` | now | Window end |
 
 `--window` and `--since` are mutually exclusive.
@@ -114,8 +137,8 @@ All sources are queried against a single time window. These flags control it.
 |---|---|---|
 | `--git-range A..B` | `-g` | Explicit hash range, overrides time window for git |
 | `--git-last N` | | Last N commits, ignoring time window |
-| `--git-author NAME` | `-a` | Filter commits to this author (nick or full name) |
-| `--git-filter PATTERN` | `-f` | Filter by commit message or changed path (case-insensitive) |
+| `--git-author NAME` | `-a` | Filter commits to this author (substring match) |
+| `--git-filter PATTERN` | `-f` | Filter by commit message (case-insensitive) |
 | `--no-git` | | Exclude git section |
 
 ### Claude Code options
@@ -133,7 +156,7 @@ All sources are queried against a single time window. These flags control it.
 | `--json` | `-j` | Machine-readable JSON |
 | `--out FILE` | `-o` | Write to file instead of stdout |
 | `--raw` | `-R` | Raw token counts (debug) |
-| `--tz HOURS` | `-z` | UTC offset override (default: auto-detected) |
+| `--tz HOURS` | `-z` | UTC offset override, e.g. `3`, `+2`, `-5`, or `auto` |
 
 ### Examples
 
@@ -174,7 +197,7 @@ on first run. To override for a specific repo, add `.gadaj.toml` at the repo roo
 
 [defaults]
 window = "4h"
-tz     = "auto"   # or e.g. "+2", "+3"
+tz     = "auto"   # or e.g. "2", "3"
 ```
 
 Update `[pricing]` when Anthropic changes rates. Update `[authors]` when your
@@ -216,27 +239,12 @@ Claude Code writes `.jsonl` session files to `~/.claude/projects/<hashed-path>/`
 `.jsonl` files in that directory, and includes any whose timestamp range
 overlaps the requested window — regardless of how many sessions that covers.
 
-Sessions with a gap of more than 30 minutes between them are flagged in output.
-Parallel sessions (overlapping timestamps, e.g. two agents running at the same
-time) are labelled `[parallel]`.
+Sessions with a gap of more than 30 minutes between them are flagged in output
+(`⚠ Xm gap`). Parallel sessions (overlapping timestamps, e.g. two agents running
+at the same time) are labelled `[parallel]`.
 
 If you want to analyse a session from a different project, use `--cc-file PATH`
 to point directly at a `.jsonl` file.
-
----
-
-## Relation to existing tools
-
-`gadaj` is not a replacement for ccusage, claude-monitor, or similar tools.
-Those are real-time consumption monitors useful for staying within plan limits.
-`gadaj` is a retrospective aggregator useful for recording what happened.
-They answer different questions and complement each other.
-
-| Tool | Question answered |
-|---|---|
-| ccusage, claude-monitor | Am I about to hit my token limit? |
-| git-quick-stats | How active is this repo over time? |
-| **gadaj** | What did our team (human + AI) actually do in this window? |
 
 ---
 
@@ -250,7 +258,6 @@ OpenRouter, Toggl, or any other source:
 
 ```python
 from gadaj.collectors.base import Collector
-from gadaj.models import ...   # use an existing type or add a new one
 
 class AiderCollector(Collector):
 
@@ -258,7 +265,7 @@ class AiderCollector(Collector):
     def source_name(self) -> str:
         return "Aider"
 
-    def collect(self, since: datetime, until: datetime) -> list:
+    def collect(self, since, until) -> list:
         # Parse Aider's .aider.chat.history.md or similar log file
         # Filter to the given window
         # Return a list of model instances
@@ -276,33 +283,18 @@ is not present.
 ## Development
 
 ```bash
-git clone https://github.com/<you>/gadaj
+git clone https://github.com/synsigma/gadaj
 cd gadaj
 pip install -e ".[dev]"
 pytest
 pytest --cov=gadaj --cov-report=term-missing
 ```
 
-`gadaj` has no runtime dependencies. Dev dependencies are `pytest` and
-`pytest-cov` only.
+`gadaj` has one runtime dependency (`tomli`) only on Python < 3.11.
+Dev dependencies are `pytest` and `pytest-cov`.
 
-For architecture, data models, testing strategy, and migration notes from
-`journal_facility.py`, see [`design.md`](design.md).
-
----
-
-## Migrating from journal_facility.py
-
-If you have been using `journal_facility.py` directly, `gadaj` is its
-structured replacement. The same logic is preserved — JSONL parsing, cost
-calculation, git helpers, and formatting — reorganised into a proper package.
-
-The old script will print a deprecation warning and forward to `gadaj` during
-the v0.1 transition period. It will be removed in v0.2.
-
-The main behavioural difference: `gadaj` scans **all** CC sessions in the time
-window rather than defaulting to the single most recent `.jsonl` file. Use
-`--cc-file` if you want the old single-file behaviour.
+For architecture, data models, testing strategy, and design decisions, see
+[`design.md`](design.md).
 
 ---
 
