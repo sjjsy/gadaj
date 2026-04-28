@@ -283,7 +283,7 @@ is not present.
 ## Development
 
 ```bash
-git clone https://github.com/synsigma/gadaj
+git clone https://github.com/sjjsy/gadaj
 cd gadaj
 pip install -e ".[dev]"
 pytest
