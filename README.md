@@ -104,8 +104,8 @@ Python < 3.11; stdlib `tomllib` is used on Python 3.11+).
 # Summarise the last 4 hours (default)
 gadaj
 
-# Everything since yesterday morning, with full commit table
-gadaj -s yesterday -c
+# Everything since yesterday morning (commits shown by default)
+gadaj -s yesterday
 
 # JSON output for an AI agent to draft a journal entry from
 gadaj -w 8h --json
@@ -152,7 +152,7 @@ All sources are queried against a single time window. These flags control it.
 
 | Flag | Short | Description |
 |---|---|---|
-| `--commits` | `-c` | Full commits table (default: summary row only) |
+| `--no-commits` | `-c` | Hide the full commits table (shown by default) |
 | `--json` | `-j` | Machine-readable JSON |
 | `--out FILE` | `-o` | Write to file instead of stdout |
 | `--raw` | `-R` | Raw token counts (debug) |
@@ -162,16 +162,16 @@ All sources are queried against a single time window. These flags control it.
 
 ```bash
 # Only git, last 12 commits
-gadaj --git-last 12 --no-cc -c
+gadaj --git-last 12 --no-cc
 
 # Only CC sessions from the last 2 days
 gadaj -s "2 days ago" --no-git
 
 # Filter to commits touching a specific area
-gadaj -w 1d -f "software-factory" -c
+gadaj -w 1d -f "software-factory"
 
 # One author's commits this week
-gadaj -s monday -a Samuel --no-cc -c
+gadaj -s monday -a Samuel --no-cc
 
 # Pipe JSON to another tool
 gadaj -w 8h --json | jq '.summary'
@@ -191,17 +191,38 @@ on first run. To override for a specific repo, add `.gadaj.toml` at the repo roo
 
 [pricing]
 # (input, output, cache_write, cache_read) — $/MTok
-"claude-sonnet-4-6"         = [3.00, 15.00, 3.75, 0.300]
+"claude-opus-4-7"           = [15.00, 75.00, 18.75, 1.500]
 "claude-opus-4-6"           = [15.00, 75.00, 18.75, 1.500]
+"claude-sonnet-4-6"         = [3.00, 15.00, 3.75, 0.300]
+"claude-haiku-4-5"          = [0.80, 4.00, 1.00, 0.080]
 "claude-haiku-4-5-20251001" = [0.80, 4.00, 1.00, 0.080]
 
 [defaults]
 window = "4h"
 tz     = "auto"   # or e.g. "2", "3"
+
+[thresholds]
+cost_warn  = 1.0   # yellow → orange coloring boundary (USD)
+cost_alert = 5.0   # orange → red coloring boundary (USD)
+
+[colors]
+# Author color palette for the commits table (ANSI color codes).
+# Values are integers (standard or 256-color codes). The default palette
+# has 8 colors in complementary pairs: green/red, cyan/magenta,
+# yellow/blue, orange/violet.
+# author_palette = [32, 31, 36, 35, 33, 34, 130, 93]
+
+[author_colors]
+# Explicit author name → ANSI color code mapping for commits table.
+# If defined, these colors take precedence over the palette.
+# Authors not listed here use palette colors in order of first appearance.
+# "Samuel Sydänlammi" = 32   # green
+# "Mikko Lastname"    = 31   # red
 ```
 
 Update `[pricing]` when Anthropic changes rates. Update `[authors]` when your
-team changes. Neither requires touching the package itself.
+team changes. Use `[author_colors]` to pin specific authors to specific colors.
+Neither requires touching the package itself.
 
 ---
 

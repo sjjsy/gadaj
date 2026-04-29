@@ -276,6 +276,7 @@ def main(argv: list[str] | None = None) -> None:
             cost_alert_usd=cfg.cost_alert_usd,
             markdown_tables=args.markdown,
             author_colors=cfg.author_colors,
+            author_colors_map=cfg.author_colors_map,
         )
 
     output = reporter.render(period)

@@ -457,3 +457,36 @@ def test_commits_shown_by_default():
     output = reporter.render(period)
     # Should have Hash column from commits table
     assert "| Hash" in output
+
+
+# ---------------------------------------------------------------------------
+# Author color mapping
+
+def test_author_colors_map_precedence():
+    """Explicit author_colors_map takes precedence over palette."""
+    period = _make_period()
+    # Map Samuel to green explicitly
+    author_map = {"Samuel": "\x1b[32m"}
+    colors = ["\x1b[31m", "\x1b[36m"]  # red, cyan in palette
+    reporter = MarkdownReporter(
+        tz_offset=3.0, show_commits=True, color=True,
+        author_colors=colors, author_colors_map=author_map
+    )
+    output = reporter.render(period)
+    # Samuel should have green (\x1b[32m) from explicit mapping, not red from palette
+    assert "\x1b[32m" in output
+
+
+def test_author_colors_map_unmapped_authors_use_palette():
+    """Authors not in explicit map use palette colors."""
+    period = _make_period()
+    # Only map one author, others should use palette
+    author_map = {"Samuel": "\x1b[32m"}
+    colors = ["\x1b[31m", "\x1b[36m"]
+    reporter = MarkdownReporter(
+        tz_offset=3.0, show_commits=True, color=True,
+        author_colors=colors, author_colors_map=author_map
+    )
+    output = reporter.render(period)
+    # Mapped author gets explicit color
+    assert "\x1b[32m" in output

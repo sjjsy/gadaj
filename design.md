@@ -20,7 +20,7 @@
 ```
 gadaj/                          ← installable package
 │
-├── __init__.py                 ← version string only: __version__ = "0.1.0"
+├── __init__.py                 ← version string only: __version__ = "0.2.0"
 ├── cli.py                      ← argparse entrypoint, orchestration
 ├── config.py                   ← config file loading, author nicks, model pricing
 ├── models.py                   ← all dataclasses
@@ -266,7 +266,7 @@ class Reporter(ABC):
 
 Produces the human-readable terminal output. Sections:
 
-1. `══ GIT ... ══` — commit summary line, authors, diff stat, optional full commits table
+1. `══ GIT ... ══` — commit summary line, authors, diff stat, full commits table (hidden only if `--no-commits`)
 2. `══ CLAUDE CODE ... ══` — per-session block, per-model totals table
 3. `══ SUMMARY ══` — one-line per source plus total cost
 
@@ -335,11 +335,19 @@ class Config:
     pricing: dict[str, tuple[float, float, float, float]]
     default_window: str                 # e.g. "4h"
     tz_offset: float | Literal["auto"]
+    cost_warn_usd: float                # cost coloring lower threshold (default 1.0)
+    cost_alert_usd: float               # cost coloring upper threshold (default 5.0)
+    author_colors: list[str]            # palette: ANSI escape sequences, one per author slot
+    author_colors_map: dict[str, str]   # explicit author → ANSI code mapping (optional)
 
 def load_config() -> Config: ...
 def resolve_nick(raw_name: str, cfg: Config) -> str: ...
 def lookup_pricing(model: str, cfg: Config) -> tuple[float, float, float, float] | None: ...
 ```
+
+`author_colors` holds the fallback palette: pre-expanded ANSI escape strings (e.g. `"\x1b[32m"`). The default palette contains 8 entries in complementary pairs (green/red, cyan/magenta, yellow/blue, orange/violet). Users override it via `[colors] author_palette = [32, 31, ...]` in `config.toml`; both standard two-digit codes and 256-color codes (e.g. `130`) are accepted and expanded to escape sequences by `_apply_toml`.
+
+`author_colors_map` is an optional explicit mapping from author names to ANSI codes, populated from the `[author_colors]` TOML section. When rendering the commits table, authors in this map use their assigned color; unmapped authors cycle through `author_colors` in order of first appearance. This allows pinning specific authors to specific colors regardless of commit order.
 
 `lookup_pricing` uses prefix matching (same logic as `journal_facility.py`) so versioned model strings like `claude-sonnet-4-6-20250514` match against `claude-sonnet-4-6`.
 

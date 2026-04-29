@@ -68,6 +68,13 @@ cost_alert = 5.0   # dark-orange → dark-red boundary
 # # Author color palette for commits table (ANSI color codes)
 # # Leave unset to use default: [32, 31, 36, 35, 33, 34, 130 (256), 93 (256)]
 # author_palette = [32, 31, 36, 35, 33, 34]
+
+# [author_colors]
+# # Explicit author name → ANSI color code mapping for commits table
+# # If defined, takes precedence over the palette. Authors not listed here
+# # are assigned colors from the palette in order of first appearance.
+# "Samuel Sydänlammi" = 32   # green
+# "Mikko Lastname"    = 31   # red
 """
 
 
@@ -84,6 +91,7 @@ class Config:
     author_colors: list[str] = field(
         default_factory=lambda: list(_DEFAULT_AUTHOR_COLORS)
     )
+    author_colors_map: dict[str, str] = field(default_factory=dict)
 
 
 def load_config(cwd: Path | None = None) -> Config:
@@ -174,6 +182,15 @@ def _apply_toml(cfg: Config, path: Path) -> None:
                         result.append(f"\x1b[{entry}m")
                 if result:
                     cfg.author_colors = result
+
+    if "author_colors" in data:
+        author_colors_section = data["author_colors"]
+        if isinstance(author_colors_section, dict):
+            for author_name, code in author_colors_section.items():
+                if isinstance(code, int):
+                    cfg.author_colors_map[author_name] = f"\x1b[{code}m"
+                elif isinstance(code, str):
+                    cfg.author_colors_map[author_name] = f"\x1b[{code}m"
 
 
 def resolve_nick(raw_name: str, cfg: Config) -> str:

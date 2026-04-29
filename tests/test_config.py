@@ -168,3 +168,51 @@ def test_author_colors_toml_string_codes(tmp_path):
     from gadaj.config import _apply_toml
     _apply_toml(cfg, toml_file)
     assert cfg.author_colors == ["\x1b[32m", "\x1b[38;5;130m"]
+
+
+def test_author_colors_map_toml_integer_codes(tmp_path):
+    """TOML [author_colors] section with integer codes maps authors to colors."""
+    try:
+        import tomllib
+    except ImportError:
+        try:
+            import tomli as tomllib
+        except ImportError:
+            pytest.skip("tomllib/tomli not available")
+
+    toml_file = tmp_path / "test.toml"
+    toml_file.write_text(
+        '[author_colors]\n'
+        '"Samuel Sydänlammi" = 32\n'
+        '"Mikko Lastname" = 31\n'
+    )
+
+    cfg = Config()
+    from gadaj.config import _apply_toml
+    _apply_toml(cfg, toml_file)
+    assert cfg.author_colors_map == {
+        "Samuel Sydänlammi": "\x1b[32m",
+        "Mikko Lastname": "\x1b[31m",
+    }
+
+
+def test_author_colors_map_toml_string_codes(tmp_path):
+    """TOML [author_colors] section accepts string codes like '38;5;130'."""
+    try:
+        import tomllib
+    except ImportError:
+        try:
+            import tomli as tomllib
+        except ImportError:
+            pytest.skip("tomllib/tomli not available")
+
+    toml_file = tmp_path / "test.toml"
+    toml_file.write_text(
+        '[author_colors]\n'
+        '"Samuel Sydänlammi" = "38;5;130"\n'
+    )
+
+    cfg = Config()
+    from gadaj.config import _apply_toml
+    _apply_toml(cfg, toml_file)
+    assert cfg.author_colors_map == {"Samuel Sydänlammi": "\x1b[38;5;130m"}

@@ -30,6 +30,7 @@ class MarkdownReporter:
         cost_alert_usd: float = 5.0,
         markdown_tables: bool = False,
         author_colors: list[str] | None = None,
+        author_colors_map: dict[str, str] | None = None,
     ):
         self.tz_offset = tz_offset
         self.show_commits = show_commits
@@ -37,6 +38,7 @@ class MarkdownReporter:
         self.markdown_tables = markdown_tables
         self._c = _Colors(color, cost_warn_usd, cost_alert_usd)
         self._author_colors = author_colors or []
+        self._author_colors_map = author_colors_map or {}
 
     def _color_duration_in_range(self, range_str: str) -> str:
         """Extract and color the duration part (e.g. '~4.0h') in a formatted range string."""
@@ -114,13 +116,19 @@ class MarkdownReporter:
         return "\n".join(lines)
 
     def _commits_table(self, period: WorkPeriod, same_date: bool) -> list[str]:
-        # Assign colors to authors in order of first appearance
+        # Assign colors to authors: explicit mapping first, then palette
         author_map: dict[str, str] = {}
+        palette_idx = 0
         for c in period.commits:
             if c.author not in author_map:
-                idx = len(author_map)
-                color = self._author_colors[idx % len(self._author_colors)] if self._author_colors else ""
-                author_map[c.author] = color
+                # Check explicit mapping first
+                if c.author in self._author_colors_map:
+                    author_map[c.author] = self._author_colors_map[c.author]
+                else:
+                    # Fall back to palette in order of appearance
+                    color = self._author_colors[palette_idx % len(self._author_colors)] if self._author_colors else ""
+                    author_map[c.author] = color
+                    palette_idx += 1
 
         # Use "Time" for header when same_date, otherwise "Datetime"
         dt_header = "Time" if same_date else "Datetime"
