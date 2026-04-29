@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from gadaj.config import Config, lookup_pricing, resolve_nick, _DEFAULT_PRICING, _DEFAULT_AUTHORS
+from gadaj.config import Config, lookup_pricing, resolve_nick, _DEFAULT_PRICING, _DEFAULT_AUTHORS, _DEFAULT_AUTHOR_COLORS
 
 
 def _default_cfg() -> Config:
@@ -108,3 +108,63 @@ def test_apply_toml_thresholds(tmp_path):
     _apply_toml(cfg, toml_file)
     assert cfg.cost_warn_usd == 2.0
     assert cfg.cost_alert_usd == 10.0
+
+
+# ---------------------------------------------------------------------------
+# Author colors
+
+def test_author_colors_default_has_eight():
+    """Default author color palette has 8 colors."""
+    assert len(_DEFAULT_AUTHOR_COLORS) == 8
+    assert all(isinstance(c, str) and c.startswith("\x1b[") for c in _DEFAULT_AUTHOR_COLORS)
+
+
+def test_config_default_author_colors():
+    """Config initializes with default author colors."""
+    cfg = Config()
+    assert len(cfg.author_colors) == 8
+    assert cfg.author_colors == list(_DEFAULT_AUTHOR_COLORS)
+
+
+def test_author_colors_toml_integer_codes(tmp_path):
+    """TOML author_palette with integer codes are converted to ANSI strings."""
+    try:
+        import tomllib
+    except ImportError:
+        try:
+            import tomli as tomllib
+        except ImportError:
+            pytest.skip("tomllib/tomli not available")
+
+    toml_file = tmp_path / "test.toml"
+    toml_file.write_text(
+        "[colors]\n"
+        "author_palette = [32, 31, 36]\n"
+    )
+
+    cfg = Config()
+    from gadaj.config import _apply_toml
+    _apply_toml(cfg, toml_file)
+    assert cfg.author_colors == ["\x1b[32m", "\x1b[31m", "\x1b[36m"]
+
+
+def test_author_colors_toml_string_codes(tmp_path):
+    """TOML author_palette with string codes like '38;5;130' are also accepted."""
+    try:
+        import tomllib
+    except ImportError:
+        try:
+            import tomli as tomllib
+        except ImportError:
+            pytest.skip("tomllib/tomli not available")
+
+    toml_file = tmp_path / "test.toml"
+    toml_file.write_text(
+        "[colors]\n"
+        'author_palette = [32, "38;5;130"]\n'
+    )
+
+    cfg = Config()
+    from gadaj.config import _apply_toml
+    _apply_toml(cfg, toml_file)
+    assert cfg.author_colors == ["\x1b[32m", "\x1b[38;5;130m"]

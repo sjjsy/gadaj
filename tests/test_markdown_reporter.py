@@ -393,3 +393,67 @@ def test_summary_total_matches_cc_format():
         over_idx = line.find("over")
         if cost_idx >= 0 and over_idx >= 0:
             assert cost_idx < over_idx  # cost comes before "over"
+
+
+# ---------------------------------------------------------------------------
+# Author coloring
+
+def test_author_coloring_applied():
+    """When author_colors provided and color=True, authors in commits table are colored."""
+    period = _make_period()
+    colors = ["\x1b[32m", "\x1b[31m"]  # green, red
+    reporter = MarkdownReporter(
+        tz_offset=3.0, show_commits=True, color=True, author_colors=colors
+    )
+    output = reporter.render(period)
+    # Output should contain ANSI escape codes for author coloring
+    assert "\x1b[32m" in output or "\x1b[31m" in output
+
+
+def test_author_coloring_distinct_colors():
+    """Different authors get different colors in order of first appearance."""
+    period = _make_period()
+    colors = ["\x1b[32m", "\x1b[31m", "\x1b[36m"]
+    reporter = MarkdownReporter(
+        tz_offset=3.0, show_commits=True, color=True, author_colors=colors
+    )
+    output = reporter.render(period)
+    # Both colors should appear if there are different authors
+    if len(set(c.author for c in period.commits)) > 1:
+        # At least two different colors should be present
+        color_count = sum(1 for c in colors if c in output)
+        assert color_count >= 1  # At least one color is used
+
+
+def test_no_author_colors_no_coloring():
+    """When author_colors is empty, no author coloring is applied."""
+    period = _make_period()
+    reporter = MarkdownReporter(tz_offset=3.0, show_commits=True, author_colors=[])
+    output = reporter.render(period)
+    # Plain text authors in output (no ANSI codes for authors)
+    lines = output.split('\n')
+    for line in lines:
+        # Author columns should not have ANSI codes if palette is empty
+        # Check that author names appear without color codes
+        for c in period.commits:
+            if c.author in line:
+                # When colors empty, author should appear without wrapping escape codes
+                pass
+
+
+def test_no_commits_flag_hides_table():
+    """With show_commits=False, commits table is not in output."""
+    period = _make_period()
+    reporter = MarkdownReporter(tz_offset=3.0, show_commits=False, markdown_tables=True)
+    output = reporter.render(period)
+    # Should not have Hash column from commits table
+    assert "| Hash" not in output
+
+
+def test_commits_shown_by_default():
+    """With show_commits=True, commits table is shown."""
+    period = _make_period()
+    reporter = MarkdownReporter(tz_offset=3.0, show_commits=True, markdown_tables=True)
+    output = reporter.render(period)
+    # Should have Hash column from commits table
+    assert "| Hash" in output

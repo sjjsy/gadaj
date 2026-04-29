@@ -88,10 +88,12 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
 
     # Output options
     parser.add_argument(
-        "-c", "--commits",
-        action="store_true",
-        help="include full commits table (default: summary row only)",
+        "-c", "--no-commits",
+        action="store_false",
+        dest="show_commits",
+        help="exclude commits table from output (shown by default)",
     )
+    parser.set_defaults(show_commits=True)
     parser.add_argument(
         "-j", "--json",
         action="store_true",
@@ -267,12 +269,13 @@ def main(argv: list[str] | None = None) -> None:
     else:
         reporter = MarkdownReporter(
             tz_offset=tz_offset,
-            show_commits=args.commits,
+            show_commits=args.show_commits,
             show_raw=args.raw,
             color=sys.stdout.isatty(),
             cost_warn_usd=cfg.cost_warn_usd,
             cost_alert_usd=cfg.cost_alert_usd,
             markdown_tables=args.markdown,
+            author_colors=cfg.author_colors,
         )
 
     output = reporter.render(period)

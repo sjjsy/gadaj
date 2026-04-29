@@ -30,6 +30,17 @@ _DEFAULT_AUTHORS: dict[str, str] = {
     "Vault":             "Vault",
 }
 
+_DEFAULT_AUTHOR_COLORS: list[str] = [
+    "\x1b[32m",          # 1. dark green
+    "\x1b[31m",          # 2. dark red   (complement of green)
+    "\x1b[36m",          # 3. dark cyan
+    "\x1b[35m",          # 4. dark magenta (complement of cyan)
+    "\x1b[33m",          # 5. dark yellow
+    "\x1b[34m",          # 6. dark blue  (complement of yellow)
+    "\x1b[38;5;130m",    # 7. dark orange (256-color)
+    "\x1b[38;5;93m",     # 8. dark violet (256-color)
+]
+
 _DEFAULT_CONFIG_TOML = """\
 [authors]
 "Samuel Sydänlammi" = "Samuel"
@@ -52,6 +63,11 @@ tz     = "auto"   # or e.g. "2", "3"
 # Cost warning thresholds for terminal coloring (USD)
 cost_warn  = 1.0   # dark-yellow → dark-orange boundary
 cost_alert = 5.0   # dark-orange → dark-red boundary
+
+# [colors]
+# # Author color palette for commits table (ANSI color codes)
+# # Leave unset to use default: [32, 31, 36, 35, 33, 34, 130 (256), 93 (256)]
+# author_palette = [32, 31, 36, 35, 33, 34]
 """
 
 
@@ -65,6 +81,9 @@ class Config:
     tz_offset: float | Literal["auto"] = "auto"
     cost_warn_usd: float = 1.0
     cost_alert_usd: float = 5.0
+    author_colors: list[str] = field(
+        default_factory=lambda: list(_DEFAULT_AUTHOR_COLORS)
+    )
 
 
 def load_config(cwd: Path | None = None) -> Config:
@@ -141,6 +160,20 @@ def _apply_toml(cfg: Config, path: Path) -> None:
                 cfg.cost_alert_usd = float(thresholds["cost_alert"])
             except (ValueError, TypeError):
                 pass
+
+    if "colors" in data:
+        colors = data["colors"]
+        if "author_palette" in colors:
+            palette = colors["author_palette"]
+            if isinstance(palette, list):
+                result = []
+                for entry in palette:
+                    if isinstance(entry, int):
+                        result.append(f"\x1b[{entry}m")
+                    elif isinstance(entry, str):
+                        result.append(f"\x1b[{entry}m")
+                if result:
+                    cfg.author_colors = result
 
 
 def resolve_nick(raw_name: str, cfg: Config) -> str:

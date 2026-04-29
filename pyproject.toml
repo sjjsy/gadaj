@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "gadaj"
-version = "0.1.0"
+version = "0.2.0"
 description = "Git and AI Data Aggregator for Journaling — aggregate git history and AI coding-agent sessions into a time-windowed work log."
 readme = "README.md"
 requires-python = ">=3.8"

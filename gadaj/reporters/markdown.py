@@ -29,12 +29,14 @@ class MarkdownReporter:
         cost_warn_usd: float = 1.0,
         cost_alert_usd: float = 5.0,
         markdown_tables: bool = False,
+        author_colors: list[str] | None = None,
     ):
         self.tz_offset = tz_offset
         self.show_commits = show_commits
         self.show_raw = show_raw
         self.markdown_tables = markdown_tables
         self._c = _Colors(color, cost_warn_usd, cost_alert_usd)
+        self._author_colors = author_colors or []
 
     def _color_duration_in_range(self, range_str: str) -> str:
         """Extract and color the duration part (e.g. '~4.0h') in a formatted range string."""
@@ -112,6 +114,14 @@ class MarkdownReporter:
         return "\n".join(lines)
 
     def _commits_table(self, period: WorkPeriod, same_date: bool) -> list[str]:
+        # Assign colors to authors in order of first appearance
+        author_map: dict[str, str] = {}
+        for c in period.commits:
+            if c.author not in author_map:
+                idx = len(author_map)
+                color = self._author_colors[idx % len(self._author_colors)] if self._author_colors else ""
+                author_map[c.author] = color
+
         # Use "Time" for header when same_date, otherwise "Datetime"
         dt_header = "Time" if same_date else "Datetime"
         table = Table(
@@ -136,7 +146,8 @@ class MarkdownReporter:
                 )
             else:
                 files_str = ""
-            table.add_row(f"`{c.hash}`", dt_str, c.author, files_str, c.message)
+            colored_author = self._c.apply_code(c.author, author_map.get(c.author, ""))
+            table.add_row(f"`{c.hash}`", dt_str, colored_author, files_str, c.message)
         return table.render(markdown=self.markdown_tables, indent="  ")
 
     # ------------------------------------------------------------------

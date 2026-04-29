@@ -50,3 +50,9 @@ class _Colors:
         if usd >= self.cost_warn:
             return f"\x1b[38;5;136m{text}\x1b[0m"  # dark golden amber (256-color)
         return f"\x1b[2;33m{text}\x1b[0m"     # dim yellow
+
+    def apply_code(self, text: str, ansi_open: str) -> str:
+        """Wrap text in an arbitrary ANSI code."""
+        if not self.enabled or not ansi_open:
+            return text
+        return f"{ansi_open}{text}\x1b[0m"
