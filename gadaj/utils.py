@@ -118,12 +118,34 @@ def fmt_hhmm(dt: datetime, tz_offset: float) -> str:
     return local.strftime("%H:%M")
 
 
+def fmt_session_range(start: datetime, end: datetime, tz_offset: float) -> str:
+    """Format a session time range as "10:00 – 13:25" or with dates if spanning days."""
+    local_start = start + timedelta(hours=tz_offset)
+    local_end = end + timedelta(hours=tz_offset)
+    start_date = local_start.date()
+    end_date = local_end.date()
+
+    start_str = local_start.strftime("%H:%M")
+    if start_date == end_date:
+        end_str = local_end.strftime("%H:%M")
+    else:
+        end_str = local_end.strftime("%Y-%m-%d %H:%M")
+    return f"{start_str} – {end_str}"
+
+
 def fmt_time_range(since: datetime, until: datetime, tz_offset: float) -> str:
-    """Format a time range as "2026-04-28 10:00 – 13:25 EEST"."""
+    """Format a time range as "2026-04-28 10:00 – 13:25 EEST" or with both dates if spanning days."""
     local_since = since + timedelta(hours=tz_offset)
     local_until = until + timedelta(hours=tz_offset)
+    since_date = local_since.date()
+    until_date = local_until.date()
+
     since_str = local_since.strftime("%Y-%m-%d %H:%M")
-    until_str = local_until.strftime("%H:%M")
+    if since_date == until_date:
+        until_str = local_until.strftime("%H:%M")
+    else:
+        until_str = local_until.strftime("%Y-%m-%d %H:%M")
+
     if tz_offset == 3.0:
         tz_label = "EEST"
     elif tz_offset == 2.0:

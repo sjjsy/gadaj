@@ -7,6 +7,7 @@ from gadaj.utils import (
     fmt_cost,
     fmt_duration,
     fmt_hhmm,
+    fmt_session_range,
     fmt_time_range,
     fmt_tok,
 )
@@ -119,15 +120,14 @@ class MarkdownReporter:
 
         for i, sess in enumerate(sessions):
             label = f"Session {i + 1}"
-            start_s = fmt_hhmm(sess.start, self.tz_offset)
-            end_s = fmt_hhmm(sess.end, self.tz_offset)
+            session_range = fmt_session_range(sess.start, sess.end, self.tz_offset)
             dur = fmt_duration(sess.end - sess.start)
             suffix = ""
             if parallel_flags[i]:
                 suffix += "  [parallel]"
             if i == n - 1 and n > 1:
                 suffix += "   ← most recent"
-            lines.append(f"  {label:<10} {start_s} – {end_s}  {dur}{suffix}")
+            lines.append(f"  {label:<10} {session_range}  {dur}{suffix}")
 
             # Gap to next session
             if i < n - 1:
