@@ -15,6 +15,76 @@ flush `wip.md`.
 
 ---
 
+## 2026-04-29 18:30 — Inverted commits flag, per-author colors, and v0.2.0
+
+Three usability improvements for the v0.2.0 release, ready for beta testing on PyPI.
+
+### Key decisions
+
+**Commits table as default.** The `--commits` flag was inverted: commits table now shown
+by default, hidden with `--no-commits` / `-c`. Rationale: commits are the most frequently
+wanted output (developers care about what changed). Making them opt-out (default=True) reduces
+friction and aligns with user expectations. The flag still uses `-c` for short form (muscle
+memory from the old inverted semantics).
+
+**Per-author color palette.** Authors in the commits table now get assigned distinct colors
+from a configurable palette. Default palette has 8 dark ANSI colors ordered as complementary
+pairs (green/red, cyan/magenta, yellow/blue, orange/violet) to maximize perceptual distance
+when only 2–4 authors are present. Colors assigned in order of first appearance across
+commits. Non-configurable until palette is exhausted (unlikely with < 10 authors).
+
+**Palette configuration via TOML.** Added `[colors]` section to config with `author_palette`
+setting. Accepts both standard ANSI codes (32 = green) and 256-color codes (130 = dark orange).
+Integer → escape-sequence conversion happens in `_apply_toml()`. Default palette (8 colors)
+used if section omitted. This allows teams with strong color-blindness accessibility needs
+or custom branding to override globally via `~/.config/gadaj/config.toml`.
+
+**Code infrastructure:** Added `_Colors.apply_code(text, code)` method to wrap text in
+arbitrary ANSI codes. Enables flexible author coloring without hardcoding specific color
+methods. Coloring is disabled when output is piped (follows Unix conventions).
+
+### What was built
+
+- Inverted `--commits` / `--no-commits` flag in CLI (action=store_false, default=True)
+- Added `_DEFAULT_AUTHOR_COLORS` (8-color palette) to config.py
+- Extended `Config` dataclass with `author_colors: list[str]` field
+- Extended `_apply_toml()` to parse `[colors]` TOML section (integer + string codes)
+- Added `apply_code()` method to `_Colors` class
+- Added `author_colors` parameter to `MarkdownReporter`
+- Implemented per-commit author → color mapping in `_commits_table()`
+- Updated README: inverted flag docs, added [thresholds] and expanded [colors] sections
+- Added comprehensive CHANGELOG entry for 0.2.0
+- Updated design.md version and config examples
+- 7 new tests (3 config, 4 reporter) validating color parsing and application
+
+### Testing
+
+- All 158 tests pass (151 → 158 +7)
+- Verified: commits table shown by default without flags
+- Verified: `gadaj -c` / `--no-commits` hides commits table
+- Verified: distinct authors get different colors in terminal output
+- Verified: TOML color parsing handles integer and string codes
+- Verified: piped output (no TTY) has no ANSI codes
+
+### Commits
+
+| Hash | Datetime | Author | Message |
+|---|---|---|---|
+| `54519cf` | 2026-04-29 18:30 | Samuel | Implement --no-commits flag, author colors, and v0.2.0 |
+
+### Stats
+
+| Item | Details |
+|---|---|
+| Commits | 1 |
+| Files | 9 changed, +184 / -7 |
+| Test count | 151 → 158 (+7) |
+| claude-haiku-4-5-20251001 | ~$0.40 (implementation) |
+| claude-sonnet-4-6 | ~$1.60 (documentation) |
+| **Total** | **~$2.00** |
+
+---
+
 ## 2026-04-29 17:10 — Commits table refinement and total row format
 
 Four UX refinements to the commits table and summary row.

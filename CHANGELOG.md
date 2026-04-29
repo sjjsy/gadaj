@@ -1,5 +1,20 @@
 # Changelog
 
+## 0.2.0 — 2026-04-29
+
+### Added
+- Commits table is now shown by default; no flag needed to see per-commit detail
+- Per-author color palette in the commits table: each author gets a distinct color from a configurable 8-color palette (complementary pairs: green/red, cyan/magenta, yellow/blue, orange/violet)
+- `[colors]` section in `config.toml`: `author_palette = [32, 31, ...]` accepts standard and 256-color ANSI codes
+
+### Changed
+- `--commits` / `-c` flag inverted to `--no-commits` / `-c`: the flag now **hides** the commits table rather than showing it
+
+### Technical
+- `_Colors.apply_code(text, code)` method added to apply an arbitrary ANSI escape sequence and reset
+
+---
+
 ## 0.1.0 — 2026-04-28
 
 Initial release. Refactored and restructured from `journal_facility.py`.
