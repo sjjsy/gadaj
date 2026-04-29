@@ -68,3 +68,43 @@ def test_lookup_pricing_prefix_longest_wins():
     p = lookup_pricing("claude-haiku-4-5-20251001-extra", cfg)
     assert p is not None
     assert p[0] == 0.80
+
+
+# ---------------------------------------------------------------------------
+# Threshold defaults
+
+def test_config_default_cost_warn():
+    cfg = Config()
+    assert cfg.cost_warn_usd == 1.0
+
+
+def test_config_default_cost_alert():
+    cfg = Config()
+    assert cfg.cost_alert_usd == 5.0
+
+
+# ---------------------------------------------------------------------------
+# TOML threshold loading
+
+def test_apply_toml_thresholds(tmp_path):
+    import sys
+    try:
+        import tomllib
+    except ImportError:
+        try:
+            import tomli as tomllib
+        except ImportError:
+            pytest.skip("tomllib/tomli not available")
+
+    toml_file = tmp_path / "test.toml"
+    toml_file.write_text(
+        "[thresholds]\n"
+        "cost_warn = 2.0\n"
+        "cost_alert = 10.0\n"
+    )
+
+    cfg = Config()
+    from gadaj.config import _apply_toml
+    _apply_toml(cfg, toml_file)
+    assert cfg.cost_warn_usd == 2.0
+    assert cfg.cost_alert_usd == 10.0

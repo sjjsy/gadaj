@@ -181,3 +181,62 @@ def test_detect_tz_offset_returns_float():
     result = detect_tz_offset()
     assert isinstance(result, float)
     assert -12.0 <= result <= 14.0
+
+
+# ---------------------------------------------------------------------------
+# period_same_date
+
+def test_period_same_date_true():
+    since = utc(2026, 4, 28, 10, 0)
+    until = utc(2026, 4, 28, 16, 0)
+    from gadaj.utils import period_same_date
+    assert period_same_date(since, until, 3.0) is True
+
+
+def test_period_same_date_false_spans_midnight():
+    since = utc(2026, 4, 28, 20, 0)
+    until = utc(2026, 4, 29, 2, 0)
+    from gadaj.utils import period_same_date
+    assert period_same_date(since, until, 3.0) is False
+
+
+# ---------------------------------------------------------------------------
+# fmt_session_range
+
+def test_fmt_session_range_same_date():
+    from gadaj.utils import fmt_session_range
+    start = utc(2026, 4, 28, 10, 30)
+    end = utc(2026, 4, 28, 11, 30)
+    result = fmt_session_range(start, end, 3.0, same_date=True)
+    assert "13:30 – 14:30" in result
+    assert "~1.0h" in result
+
+
+def test_fmt_session_range_multiday():
+    from gadaj.utils import fmt_session_range
+    start = utc(2026, 4, 28, 21, 0)
+    end = utc(2026, 4, 29, 1, 0)
+    result = fmt_session_range(start, end, 3.0, same_date=False)
+    assert "2026-04-29 00:00 – 2026-04-29 04:00" in result
+    assert "~4.0h" in result
+
+
+# ---------------------------------------------------------------------------
+# fmt_time_range with same_date
+
+def test_fmt_time_range_same_date():
+    from gadaj.utils import fmt_time_range
+    since = utc(2026, 4, 28, 10, 0)
+    until = utc(2026, 4, 28, 16, 0)
+    result = fmt_time_range(since, until, 3.0, same_date=True)
+    assert "2026-04-28 13:00 – 19:00 EEST" in result
+    assert "~6.0h" in result
+
+
+def test_fmt_time_range_multiday():
+    from gadaj.utils import fmt_time_range
+    since = utc(2026, 4, 28, 20, 0)
+    until = utc(2026, 4, 29, 4, 0)
+    result = fmt_time_range(since, until, 3.0, same_date=False)
+    assert "2026-04-28 23:00 – 2026-04-29 07:00 EEST" in result
+    assert "~8.0h" in result

@@ -108,6 +108,11 @@ def parse_args(argv: list[str] | None = None) -> argparse.Namespace:
         help="raw token counts instead of abbreviated (debug)",
     )
     parser.add_argument(
+        "-m", "--markdown",
+        action="store_true",
+        help="output tables and headings in Markdown format (for pasting into docs)",
+    )
+    parser.add_argument(
         "-z", "--tz",
         metavar="HOURS",
         default=None,
@@ -267,6 +272,7 @@ def main(argv: list[str] | None = None) -> None:
             color=sys.stdout.isatty(),
             cost_warn_usd=cfg.cost_warn_usd,
             cost_alert_usd=cfg.cost_alert_usd,
+            markdown_tables=args.markdown,
         )
 
     output = reporter.render(period)
