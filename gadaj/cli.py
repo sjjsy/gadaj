@@ -264,6 +264,9 @@ def main(argv: list[str] | None = None) -> None:
             tz_offset=tz_offset,
             show_commits=args.commits,
             show_raw=args.raw,
+            color=sys.stdout.isatty(),
+            cost_warn_usd=cfg.cost_warn_usd,
+            cost_alert_usd=cfg.cost_alert_usd,
         )
 
     output = reporter.render(period)

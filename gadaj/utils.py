@@ -96,20 +96,23 @@ def fmt_duration(td: timedelta) -> str:
     return f"~{hours:.1f}h"
 
 
+def _tz_label(tz_offset: float) -> str:
+    """Return timezone label for a given offset."""
+    if tz_offset == 3.0:
+        return "EEST"
+    if tz_offset == 2.0:
+        return "EET"
+    if tz_offset == 0.0:
+        return "UTC"
+    sign = "+" if tz_offset >= 0 else "-"
+    return f"UTC{sign}{abs(tz_offset):.0f}"
+
+
 def fmt_datetime(dt: datetime, tz_offset: float) -> str:
     """UTC datetime → "2026-04-28 13:25 EEST" given tz_offset=3.0."""
     local = dt + timedelta(hours=tz_offset)
     date_str = local.strftime("%Y-%m-%d %H:%M")
-    if tz_offset == 3.0:
-        tz_label = "EEST"
-    elif tz_offset == 2.0:
-        tz_label = "EET"
-    elif tz_offset == 0.0:
-        tz_label = "UTC"
-    else:
-        sign = "+" if tz_offset >= 0 else "-"
-        tz_label = f"UTC{sign}{abs(tz_offset):.0f}"
-    return f"{date_str} {tz_label}"
+    return f"{date_str} {_tz_label(tz_offset)}"
 
 
 def fmt_hhmm(dt: datetime, tz_offset: float) -> str:
@@ -118,44 +121,42 @@ def fmt_hhmm(dt: datetime, tz_offset: float) -> str:
     return local.strftime("%H:%M")
 
 
-def fmt_session_range(start: datetime, end: datetime, tz_offset: float) -> str:
-    """Format a session time range as "10:00 – 13:25" or with dates if spanning days."""
-    local_start = start + timedelta(hours=tz_offset)
-    local_end = end + timedelta(hours=tz_offset)
-    start_date = local_start.date()
-    end_date = local_end.date()
-
-    start_str = local_start.strftime("%H:%M")
-    if start_date == end_date:
-        end_str = local_end.strftime("%H:%M")
-    else:
-        end_str = local_end.strftime("%Y-%m-%d %H:%M")
-    return f"{start_str} – {end_str}"
-
-
-def fmt_time_range(since: datetime, until: datetime, tz_offset: float) -> str:
-    """Format a time range as "2026-04-28 10:00 – 13:25 EEST" or with both dates if spanning days."""
+def period_same_date(since: datetime, until: datetime, tz_offset: float) -> bool:
+    """Return True if since and until fall on the same local date (after tz_offset)."""
     local_since = since + timedelta(hours=tz_offset)
     local_until = until + timedelta(hours=tz_offset)
-    since_date = local_since.date()
-    until_date = local_until.date()
+    return local_since.date() == local_until.date()
+
+
+def fmt_session_range(start: datetime, end: datetime, tz_offset: float, same_date: bool = False) -> str:
+    """Format a session time range with duration. When same_date, show HH:MM; else full datetime."""
+    local_start = start + timedelta(hours=tz_offset)
+    local_end = end + timedelta(hours=tz_offset)
+    dur = fmt_duration(end - start)
+
+    if same_date:
+        start_str = local_start.strftime("%H:%M")
+        end_str = local_end.strftime("%H:%M")
+    else:
+        start_str = local_start.strftime("%Y-%m-%d %H:%M")
+        end_str = local_end.strftime("%Y-%m-%d %H:%M")
+    return f"{start_str} – {end_str}  {dur}"
+
+
+def fmt_time_range(since: datetime, until: datetime, tz_offset: float, same_date: bool = False) -> str:
+    """Format a time range with duration. Heading row format with timezone label."""
+    local_since = since + timedelta(hours=tz_offset)
+    local_until = until + timedelta(hours=tz_offset)
+    dur = fmt_duration(until - since)
 
     since_str = local_since.strftime("%Y-%m-%d %H:%M")
-    if since_date == until_date:
+    if same_date:
         until_str = local_until.strftime("%H:%M")
     else:
         until_str = local_until.strftime("%Y-%m-%d %H:%M")
 
-    if tz_offset == 3.0:
-        tz_label = "EEST"
-    elif tz_offset == 2.0:
-        tz_label = "EET"
-    elif tz_offset == 0.0:
-        tz_label = "UTC"
-    else:
-        sign = "+" if tz_offset >= 0 else "-"
-        tz_label = f"UTC{sign}{abs(tz_offset):.0f}"
-    return f"{since_str} – {until_str} {tz_label}"
+    tz_label = _tz_label(tz_offset)
+    return f"{since_str} – {until_str} {tz_label}  {dur}"
 
 
 def detect_tz_offset() -> float:

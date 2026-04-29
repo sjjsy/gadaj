@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from datetime import timedelta
 
+from gadaj.colors import _Colors
 from gadaj.models import CCSession, WorkPeriod
 from gadaj.utils import (
     fmt_cost,
@@ -10,6 +11,7 @@ from gadaj.utils import (
     fmt_session_range,
     fmt_time_range,
     fmt_tok,
+    period_same_date,
 )
 
 _WIDTH = 70
@@ -23,34 +25,48 @@ class MarkdownReporter:
         tz_offset: float,
         show_commits: bool = False,
         show_raw: bool = False,
+        color: bool = False,
+        cost_warn_usd: float = 1.0,
+        cost_alert_usd: float = 5.0,
     ):
         self.tz_offset = tz_offset
         self.show_commits = show_commits
         self.show_raw = show_raw
+        self._c = _Colors(color, cost_warn_usd, cost_alert_usd)
+
+    def _color_duration_in_range(self, range_str: str) -> str:
+        """Extract and color the duration part (e.g. '~4.0h') in a formatted range string."""
+        if "  ~" in range_str:
+            parts = range_str.rsplit("  ~", 1)
+            colored_dur = self._c.duration(f"~{parts[1]}")
+            return f"{parts[0]}  {colored_dur}"
+        return range_str
 
     def render(self, period: WorkPeriod) -> str:
         parts: list[str] = []
+        same_date = period_same_date(period.since, period.until, self.tz_offset)
 
-        git_section = self._git_section(period)
+        git_section = self._git_section(period, same_date)
         if git_section:
             parts.append(git_section)
 
-        cc_section = self._cc_section(period)
+        cc_section = self._cc_section(period, same_date)
         if cc_section:
             parts.append(cc_section)
 
-        parts.append(self._summary_section(period))
+        parts.append(self._summary_section(period, same_date))
 
         return "\n\n".join(parts)
 
     # ------------------------------------------------------------------
     # Git section
 
-    def _git_section(self, period: WorkPeriod) -> str | None:
+    def _git_section(self, period: WorkPeriod, same_date: bool) -> str | None:
         if not period.commits:
             return None
 
-        time_range = fmt_time_range(period.since, period.until, self.tz_offset)
+        time_range = fmt_time_range(period.since, period.until, self.tz_offset, same_date)
+        time_range = self._color_duration_in_range(time_range)
         lines = [_header("GIT", time_range), ""]
 
         # Commit summary
@@ -60,7 +76,7 @@ class MarkdownReporter:
         commit_summary = (
             f"{n} · {first_h} – {last_h}" if n > 1 else f"1 · {first_h}"
         )
-        lines.append(f"  Commits   {commit_summary}")
+        lines.append(f"  {self._c.dim('Commits')}   {commit_summary}")
 
         # Authors
         author_counts: dict[str, int] = {}
@@ -69,50 +85,52 @@ class MarkdownReporter:
         authors_str = "  ".join(
             f"{name} ({count})" for name, count in sorted(author_counts.items())
         )
-        lines.append(f"  Authors   {authors_str}")
+        lines.append(f"  {self._c.dim('Authors')}   {authors_str}")
 
         # Files
         if period.files_changed > 0:
             lines.append(
-                f"  Files     {period.files_changed} changed"
+                f"  {self._c.dim('Files')}     {period.files_changed} changed"
                 f" · +{period.insertions} / -{period.deletions}"
             )
 
         # Optional commits table
         if self.show_commits:
             lines.append("")
-            lines.extend(self._commits_table(period))
+            lines.extend(self._commits_table(period, same_date))
 
         return "\n".join(lines)
 
-    def _commits_table(self, period: WorkPeriod) -> list[str]:
+    def _commits_table(self, period: WorkPeriod, same_date: bool) -> list[str]:
         rows = [
             "| Hash      | Datetime         | Author  | Message                    |",
             "|-----------|------------------|---------|----------------------------|",
         ]
         for c in period.commits:
-            dt_local = fmt_hhmm(c.datetime, self.tz_offset)
-            date_local = (c.datetime + timedelta(hours=self.tz_offset)).strftime(
-                "%Y-%m-%d"
-            )
+            local_dt = c.datetime + timedelta(hours=self.tz_offset)
+            if same_date:
+                dt_str = local_dt.strftime("%H:%M")
+            else:
+                dt_str = local_dt.strftime("%Y-%m-%d %H:%M")
             rows.append(
-                f"| `{c.hash:<7}` | {date_local} {dt_local} | {c.author:<7} | {c.message} |"
+                f"| `{c.hash:<7}` | {dt_str:<16} | {c.author:<7} | {c.message} |"
             )
         return rows
 
     # ------------------------------------------------------------------
     # CC section
 
-    def _cc_section(self, period: WorkPeriod) -> str | None:
+    def _cc_section(self, period: WorkPeriod, same_date: bool) -> str | None:
         if not period.cc_sessions:
             return None
 
-        time_range = fmt_time_range(period.since, period.until, self.tz_offset)
+        time_range = fmt_time_range(period.since, period.until, self.tz_offset, same_date)
+        time_range = self._color_duration_in_range(time_range)
         lines = [_header("CLAUDE CODE", time_range), ""]
 
         sessions = period.cc_sessions
         n = len(sessions)
-        lines.append(f"  Sessions  {n} in window")
+        lines.append(f"  {self._c.dim('Sessions')}  {n} in window")
         lines.append("")
 
         # Detect parallel sessions (overlapping time ranges)
@@ -120,21 +138,21 @@ class MarkdownReporter:
 
         for i, sess in enumerate(sessions):
             label = f"Session {i + 1}"
-            session_range = fmt_session_range(sess.start, sess.end, self.tz_offset)
-            dur = fmt_duration(sess.end - sess.start)
+            session_range = fmt_session_range(sess.start, sess.end, self.tz_offset, same_date)
+            session_range = self._color_duration_in_range(session_range)
             suffix = ""
             if parallel_flags[i]:
                 suffix += "  [parallel]"
             if i == n - 1 and n > 1:
                 suffix += "   ← most recent"
-            lines.append(f"  {label:<10} {session_range}  {dur}{suffix}")
+            lines.append(f"  {self._c.dim(label):<10} {session_range}{suffix}")
 
             # Gap to next session
             if i < n - 1:
                 gap = sessions[i + 1].start - sess.end
                 gap_min = gap.total_seconds() / 60
                 if gap_min > _GAP_THRESHOLD_MINUTES:
-                    lines.append(f"  ⚠ {gap_min:.0f}m gap")
+                    lines.append(f"  {self._c.dim(f'⚠ {gap_min:.0f}m gap')}")
 
         # Per-model usage table
         lines.append("")
@@ -150,26 +168,29 @@ class MarkdownReporter:
         aggregated = _aggregate_model_usage(sessions)
 
         header = (
-            f"  {'Model':<22}{'In':>7}{'Out':>7}{'Cache↑':>9}{'Cache↓':>9}{'Cost':>10}"
+            f"  {self._c.dim('Model'):<22}{self._c.dim('In'):>7}{self._c.dim('Out'):>7}"
+            f"{self._c.dim('Cache↑'):>9}{self._c.dim('Cache↓'):>9}{self._c.dim('Cost'):>10}"
         )
         sep = "  " + "─" * (_WIDTH - 4)
         rows = [header]
 
         for model, (usage, cost) in sorted(aggregated.items()):
+            cost_str = self._c.cost(fmt_cost(cost), cost)
             rows.append(
                 f"  {model:<22}"
                 f"{fmt_tok(usage.input_tokens):>7}"
                 f"{fmt_tok(usage.output_tokens):>7}"
                 f"{fmt_tok(usage.cache_write_tokens):>9}"
                 f"{fmt_tok(usage.cache_read_tokens):>9}"
-                f"{fmt_cost(cost):>10}"
+                f"{cost_str:>10}"
             )
 
         rows.append(sep)
         total_cost = sum(cost for _, (_, cost) in aggregated.items())
         n = len(sessions)
         session_label = f"{n} session{'s' if n != 1 else ''} total"
-        rows.append(f"  {session_label:<22}{'':>7}{'':>7}{'':>9}{'':>9}{fmt_cost(total_cost):>10}")
+        total_cost_str = self._c.cost(fmt_cost(total_cost), total_cost)
+        rows.append(f"  {session_label:<22}{'':>7}{'':>7}{'':>9}{'':>9}{total_cost_str:>10}")
 
         return rows
 
@@ -191,12 +212,10 @@ class MarkdownReporter:
     # ------------------------------------------------------------------
     # Summary section
 
-    def _summary_section(self, period: WorkPeriod) -> str:
-        time_range = fmt_time_range(period.since, period.until, self.tz_offset)
-        window_dur = fmt_duration(period.until - period.since)
-
-        lines = [_header("SUMMARY", ""), ""]
-        lines.append(f"  Window    {window_dur}  ({time_range})")
+    def _summary_section(self, period: WorkPeriod, same_date: bool) -> str:
+        time_range = fmt_time_range(period.since, period.until, self.tz_offset, same_date)
+        time_range = self._color_duration_in_range(time_range)
+        lines = [_header("SUMMARY", time_range), ""]
 
         if period.commits:
             n = len(period.commits)
@@ -206,23 +225,25 @@ class MarkdownReporter:
             authors_str = ", ".join(
                 f"{name}" for name in sorted(author_counts)
             )
-            lines.append(f"  Git       {n} commit{'s' if n != 1 else ''} · {authors_str}")
+            lines.append(f"  {self._c.dim('Git')}       {n} commit{'s' if n != 1 else ''} · {authors_str}")
         else:
-            lines.append("  Git       no commits in window")
+            lines.append(f"  {self._c.dim('Git')}       no commits in window")
 
         if period.cc_sessions:
             aggregated = _aggregate_model_usage(period.cc_sessions)
             models_str = ", ".join(sorted(aggregated))
             total_cost = period.total_cost_usd
             n_sess = len(period.cc_sessions)
+            cost_str = self._c.cost(fmt_cost(total_cost), total_cost)
             lines.append(
-                f"  CC        {n_sess} session{'s' if n_sess != 1 else ''}"
-                f" · {models_str} · {fmt_cost(total_cost)}"
+                f"  {self._c.dim('CC')}        {n_sess} session{'s' if n_sess != 1 else ''}"
+                f" · {models_str} · {cost_str}"
             )
         else:
-            lines.append("  CC        no sessions in window")
+            lines.append(f"  {self._c.dim('CC')}        no sessions in window")
 
-        lines.append(f"  Total     {fmt_cost(period.total_cost_usd):>{_WIDTH - 12}}")
+        total_cost_str = self._c.cost(fmt_cost(period.total_cost_usd), period.total_cost_usd)
+        lines.append(f"  {self._c.dim('Total')}     {total_cost_str:>{_WIDTH - 12}}")
 
         return "\n".join(lines)
 

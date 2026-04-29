@@ -47,6 +47,11 @@ _DEFAULT_CONFIG_TOML = """\
 [defaults]
 window = "4h"
 tz     = "auto"   # or e.g. "2", "3"
+
+[thresholds]
+# Cost warning thresholds for terminal coloring (USD)
+cost_warn  = 1.0   # dark-yellow → dark-orange boundary
+cost_alert = 5.0   # dark-orange → dark-red boundary
 """
 
 
@@ -58,6 +63,8 @@ class Config:
     )
     default_window: str = "4h"
     tz_offset: float | Literal["auto"] = "auto"
+    cost_warn_usd: float = 1.0
+    cost_alert_usd: float = 5.0
 
 
 def load_config(cwd: Path | None = None) -> Config:
@@ -121,6 +128,19 @@ def _apply_toml(cfg: Config, path: Path) -> None:
                     cfg.tz_offset = float(tz_val)
                 except (ValueError, TypeError):
                     pass
+
+    if "thresholds" in data:
+        thresholds = data["thresholds"]
+        if "cost_warn" in thresholds:
+            try:
+                cfg.cost_warn_usd = float(thresholds["cost_warn"])
+            except (ValueError, TypeError):
+                pass
+        if "cost_alert" in thresholds:
+            try:
+                cfg.cost_alert_usd = float(thresholds["cost_alert"])
+            except (ValueError, TypeError):
+                pass
 
 
 def resolve_nick(raw_name: str, cfg: Config) -> str:
