@@ -15,6 +15,63 @@ flush `wip.md`.
 
 ---
 
+## 2026-04-29 17:10 — Commits table refinement and total row format
+
+Four UX refinements to the commits table and summary row.
+
+### Key decisions
+
+**Dynamic "Time" vs "Datetime" header.** When a time window spans a single calendar day
+(same_date=true), showing "Datetime" with full `YYYY-MM-DD HH:MM` format is redundant.
+Changed header to "Time" (showing just `HH:MM`) for brevity. Multi-day windows keep
+"Datetime" for clarity.
+
+**Commits table respects -m flag.** Previously, the commits table always rendered in
+Markdown pipe format regardless of the --markdown flag. Now it respects `markdown_tables`:
+lightweight mode (default) renders space-aligned columns; -m flag renders pipe tables.
+Consistent with other sections.
+
+**Per-commit file stats in table.** Each commit row now includes a "Files" column showing
+`N · +X / -Y` (files changed, insertions, deletions), matching the git overview Files row
+format. Gives context at a glance for the significance of each commit.
+
+**Total row format consistency.** Changed Total row from "~Xh  ~$Y.YY" (duration before
+cost) to "~$Y.YY over ~Xh" (cost before duration), matching the CC row format and
+establishing a consistent "metric over duration" pattern in the summary.
+
+### What was built
+
+- Refined `_commits_table()`: dynamic header, markdown respect, files column
+- Updated `_summary_section()`: total row now "cost over duration"
+- 5 new tests for commits table variants and total row format
+
+### Testing
+
+- All 149 tests pass (144 → 149 +5)
+- Verified: same-day windows show "Time" header in pipe format
+- Verified: multi-day windows show "Datetime" header
+- Verified: lightweight mode shows space-aligned table; -m shows pipes
+- Verified: files column displays per-commit stats
+- Verified: total row shows "cost over duration"
+
+### Commits
+
+| Hash | Datetime | Author | Message |
+|---|---|---|---|
+| `976bb37` | 2026-04-29 17:10 | Samuel | Refine commits table and total row format |
+
+### Stats
+
+| Item | Details |
+|---|---|
+| Commits | 1 |
+| Files | 3 changed, +90 / -10 |
+| Test count | 144 → 149 (+5) |
+| claude-haiku-4-5-20251001 | ~$1.20 (this session) |
+| **Total** | **~$1.20** |
+
+---
+
 ## 2026-04-29 13:20 — Git overview table, blue digits, darker colors, summary overhaul
 
 Four quality-of-life improvements to visual output and information density.
