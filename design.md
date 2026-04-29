@@ -54,6 +54,8 @@ tests/
     test_aggregator.py
     test_markdown_reporter.py
     test_json_reporter.py
+    test_colors.py
+    test_table.py
     fixtures/
         sample.jsonl            ← CC session 1 (10:02–11:47 UTC, two models)
         sample2.jsonl           ← CC session 2 (12:20–13:24 UTC, gap detection)
