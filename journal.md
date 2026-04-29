@@ -15,6 +15,71 @@ flush `wip.md`.
 
 ---
 
+## 2026-04-29 13:20 — Git overview table, blue digits, darker colors, summary overhaul
+
+Four quality-of-life improvements to visual output and information density.
+
+### Key decisions
+
+**Consistent column width enforcement in Markdown mode.** The Markdown separator row
+enforced min-width-3 dashes (standard Markdown requirement), but header and data rows
+used the actual column width. For a column like `#` (1 char), this created visible
+misalignment: `| # |` vs `| --- |`. Fixed by enforcing min-width-3 globally in
+Markdown mode so all rows (header, separator, data) use consistent widths.
+
+**Blue digit coloring with ANSI-aware processing.** Most numeric values (commit counts,
+file counts, session counts, date/time digits, token counts) now appear in dark blue.
+The challenge: some strings already have ANSI coloring (e.g. durations are cyan). A new
+`colorize_digits()` method splits text by ANSI codes and only colors uncolored digit
+sequences, preserving existing colors. For single-value wrapping, a simpler `nums()`
+method wraps text directly in blue.
+
+**Darker warn cost color.** Changed from standard ANSI yellow `\x1b[33m` to 256-color
+dark golden amber `\x1b[38;5;136m` for better visual distinction. Below warn stays dim
+yellow, warn range becomes darker amber, alert threshold remains red.
+
+**Richer summary rows with time context.** Git row now shows "X commits over ~Yh" (Y =
+hours between first and last commit), giving temporal context. CC row reformatted to
+"cost over ~Xh from Y sessions" putting cost first, then duration, then session count.
+Total row includes session duration before cost, matching the context-first principle.
+
+**Git overview as proper Table.** Converted `_git_section()` to use the Table class
+(Field/Value columns) consistent with Summary section. Field labels kept dim-styled for
+visual grouping. Markdown mode renders pipe table; lightweight renders space-aligned.
+
+### What was built
+
+- Enhanced `gadaj/table.py`: min-width enforcement in Markdown mode
+- Enhanced `gadaj/colors.py`: `nums()` and `colorize_digits()` methods; darker warn
+- Refactored `gadaj/reporters/markdown.py`: Git overview as Table; blue coloring
+  applied throughout; summary rows reformatted with duration context
+- 10 new tests: 5 color tests (nums, colorize_digits, darker warn), 5 reporter tests
+
+### Testing
+
+- All 144 tests pass (134 → 144 +10)
+- Verified: sessions table separator aligns perfectly (`| # |`, `| --- |`, `| 1 |`)
+- Verified: digits are blue in terminal (TTY); no ANSI in pipe
+- Verified: markdown mode has pipe tables; lightweight has space-aligned columns
+
+### Commits
+
+| Hash | Datetime | Author | Message |
+|---|---|---|---|
+| `495a485` | 2026-04-29 13:20 | Samuel | Add git overview table, blue digit coloring, darker warn color, summary overhaul |
+
+### Stats
+
+| Item | Details |
+|---|---|
+| Commits | 1 |
+| Files | 6 changed, +209 / -30 |
+| Test count | 134 → 144 (+10) |
+| claude-haiku-4-5-20251001 | ~$2.80 (this session) |
+| **Total** | **~$2.80** |
+
+---
+
 ## 2026-04-29 12:44 — Table formatter, --markdown flag, and alignment fixes
 
 Comprehensive refactor of the Markdown reporter to use a reliable tabular formatter,
