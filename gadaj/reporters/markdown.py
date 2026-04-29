@@ -112,10 +112,13 @@ class MarkdownReporter:
         return "\n".join(lines)
 
     def _commits_table(self, period: WorkPeriod, same_date: bool) -> list[str]:
+        # Use "Time" for header when same_date, otherwise "Datetime"
+        dt_header = "Time" if same_date else "Datetime"
         table = Table(
             Col("Hash"),
-            Col("Datetime"),
+            Col(dt_header),
             Col("Author"),
+            Col("Files"),
             Col("Message", max_width=50),
         )
         for c in period.commits:
@@ -125,8 +128,16 @@ class MarkdownReporter:
             else:
                 dt_str = local_dt.strftime("%Y-%m-%d %H:%M")
             dt_str = self._c.colorize_digits(dt_str)
-            table.add_row(f"`{c.hash}`", dt_str, c.author, c.message)
-        return table.render(markdown=True, indent="  ")
+            # Per-commit file stats (similar to git overview Files row)
+            if c.files_changed > 0:
+                files_str = (
+                    f"{self._c.nums(str(c.files_changed))} · "
+                    f"+{self._c.nums(str(c.insertions))} / -{self._c.nums(str(c.deletions))}"
+                )
+            else:
+                files_str = ""
+            table.add_row(f"`{c.hash}`", dt_str, c.author, files_str, c.message)
+        return table.render(markdown=self.markdown_tables, indent="  ")
 
     # ------------------------------------------------------------------
     # CC section
@@ -277,16 +288,16 @@ class MarkdownReporter:
         else:
             table.add_row("CC", "no sessions in window")
 
-        # Total row: duration before cost
+        # Total row: cost over duration (matching CC row format)
+        total_cost_str = self._c.cost(fmt_cost(period.total_cost_usd), period.total_cost_usd)
         if period.cc_sessions:
             total_sess_dur = sum(
                 (s.end - s.start for s in period.cc_sessions), timedelta()
             )
             dur_str = self._c.duration(fmt_duration(total_sess_dur))
+            table.add_row("Total", f"{total_cost_str} over {dur_str}")
         else:
-            dur_str = self._c.duration("~0.0h")
-        total_cost_str = self._c.cost(fmt_cost(period.total_cost_usd), period.total_cost_usd)
-        table.add_row("Total", f"{dur_str}  {total_cost_str}")
+            table.add_row("Total", total_cost_str)
 
         lines.extend(table.render(markdown=self.markdown_tables, indent="  "))
         return "\n".join(lines)

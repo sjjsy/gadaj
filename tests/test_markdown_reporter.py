@@ -95,11 +95,25 @@ def test_markdown_no_most_recent_single_session():
 
 
 def test_markdown_commits_table_when_flag():
+    """Commits table shown in lightweight format when -m flag not given."""
     period = _make_period()
-    reporter = MarkdownReporter(tz_offset=3.0, show_commits=True)
+    reporter = MarkdownReporter(tz_offset=3.0, show_commits=True, markdown_tables=False)
     output = reporter.render(period)
+    # Should contain Hash, Author, Files, Message columns (in lightweight format, not pipes)
+    assert "Hash" in output
+    assert "Author" in output
+    assert "Files" in output
+
+
+def test_markdown_commits_table_markdown_mode():
+    """Commits table in pipe format when -m flag is given."""
+    period = _make_period()
+    reporter = MarkdownReporter(tz_offset=3.0, show_commits=True, markdown_tables=True)
+    output = reporter.render(period)
+    # Should have pipe format
     assert "| Hash" in output
-    assert "| Datetime" in output
+    assert "| Author" in output
+    assert "| Files" in output
 
 
 def test_markdown_no_commits_table_by_default():
@@ -328,3 +342,54 @@ def test_git_section_table_markdown():
     assert "| Field" in output
     assert "| Value" in output
     assert "| Commits" in output
+
+
+def test_commits_table_time_header_when_same_date():
+    """Commits table uses 'Time' header when window is same date."""
+    period = _make_period()  # same_date should be True for this fixture
+    reporter = MarkdownReporter(tz_offset=3.0, show_commits=True, markdown_tables=True)
+    output = reporter.render(period)
+    # The period is 2026-04-28 10:00 to 14:00, so same_date=True
+    assert "| Time" in output or "Time" in output
+
+
+def test_commits_table_datetime_header_when_multiday():
+    """Commits table uses 'Datetime' header when window spans multiple days."""
+    from gadaj.models import WorkPeriod
+    period = _make_period(with_commits=True)
+    # Override the period to span multiple days
+    period.since = utc(2026, 4, 28, 10, 0)
+    period.until = utc(2026, 4, 29, 14, 0)
+    reporter = MarkdownReporter(tz_offset=3.0, show_commits=True, markdown_tables=True)
+    output = reporter.render(period)
+    # With multi-day window, should use Datetime header
+    assert "| Datetime" in output or "Datetime" in output
+
+
+def test_commits_table_includes_files_column():
+    """Commits table includes Files column with per-commit stats."""
+    period = _make_period()
+    reporter = MarkdownReporter(tz_offset=3.0, show_commits=True, markdown_tables=True)
+    output = reporter.render(period)
+    # Should have Files column header
+    assert "| Files" in output
+
+
+def test_summary_total_matches_cc_format():
+    """Total row uses 'cost over duration' format matching CC row."""
+    period = _make_period()
+    reporter = MarkdownReporter(tz_offset=3.0)
+    output = reporter.render(period)
+    # Total row should show "over" between cost and duration
+    lines = output.split('\n')
+    total_line = [l for l in lines if 'Total' in l and 'session' not in l.lower()]
+    if total_line:
+        line = total_line[0]
+        # Should contain "over" with cost and duration
+        assert "over" in line
+        assert "~$" in line
+        # Cost should appear before "over" and duration after
+        cost_idx = line.find("~$")
+        over_idx = line.find("over")
+        if cost_idx >= 0 and over_idx >= 0:
+            assert cost_idx < over_idx  # cost comes before "over"
