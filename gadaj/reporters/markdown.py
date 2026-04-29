@@ -69,32 +69,40 @@ class MarkdownReporter:
 
         time_range = fmt_time_range(period.since, period.until, self.tz_offset, same_date)
         time_range = self._color_duration_in_range(time_range)
+        time_range = self._c.colorize_digits(time_range)
         lines = [_header("GIT", time_range, self.markdown_tables), ""]
+
+        # Build overview table
+        table = Table(Col("Field"), Col("Value"))
 
         # Commit summary
         n = len(period.commits)
         first_h = period.commits[0].hash
         last_h = period.commits[-1].hash
         commit_summary = (
-            f"{n} · {first_h} – {last_h}" if n > 1 else f"1 · {first_h}"
+            f"{self._c.nums(str(n))} · {first_h} – {last_h}" if n > 1
+            else f"{self._c.nums('1')} · {first_h}"
         )
-        lines.append(f"  {self._c.dim('Commits')}   {commit_summary}")
+        table.add_row(self._c.dim("Commits"), commit_summary)
 
         # Authors
         author_counts: dict[str, int] = {}
         for c in period.commits:
             author_counts[c.author] = author_counts.get(c.author, 0) + 1
         authors_str = "  ".join(
-            f"{name} ({count})" for name, count in sorted(author_counts.items())
+            f"{name} ({self._c.nums(str(count))})" for name, count in sorted(author_counts.items())
         )
-        lines.append(f"  {self._c.dim('Authors')}   {authors_str}")
+        table.add_row(self._c.dim("Authors"), authors_str)
 
         # Files
         if period.files_changed > 0:
-            lines.append(
-                f"  {self._c.dim('Files')}     {period.files_changed} changed"
-                f" · +{period.insertions} / -{period.deletions}"
+            files_str = (
+                f"{self._c.nums(str(period.files_changed))} changed"
+                f" · +{self._c.nums(str(period.insertions))} / -{self._c.nums(str(period.deletions))}"
             )
+            table.add_row(self._c.dim("Files"), files_str)
+
+        lines.extend(table.render(markdown=self.markdown_tables, indent="  "))
 
         # Optional commits table
         if self.show_commits:
@@ -116,6 +124,7 @@ class MarkdownReporter:
                 dt_str = local_dt.strftime("%H:%M")
             else:
                 dt_str = local_dt.strftime("%Y-%m-%d %H:%M")
+            dt_str = self._c.colorize_digits(dt_str)
             table.add_row(f"`{c.hash}`", dt_str, c.author, c.message)
         return table.render(markdown=True, indent="  ")
 
@@ -128,11 +137,12 @@ class MarkdownReporter:
 
         time_range = fmt_time_range(period.since, period.until, self.tz_offset, same_date)
         time_range = self._color_duration_in_range(time_range)
+        time_range = self._c.colorize_digits(time_range)
         lines = [_header("CLAUDE CODE", time_range, self.markdown_tables), ""]
 
         sessions = period.cc_sessions
         n = len(sessions)
-        lines.append(f"  {self._c.dim('Sessions')}  {n} in window")
+        lines.append(f"  {self._c.dim('Sessions')}  {self._c.nums(str(n))} in window")
         lines.append("")
 
         # Detect parallel sessions (overlapping time ranges)
@@ -143,6 +153,7 @@ class MarkdownReporter:
         for i, sess in enumerate(sessions):
             session_range = fmt_session_range(sess.start, sess.end, self.tz_offset, same_date)
             session_range = self._color_duration_in_range(session_range)
+            session_range = self._c.colorize_digits(session_range)
             notes = ""
             if parallel_flags[i]:
                 notes += "[parallel]"
@@ -190,17 +201,17 @@ class MarkdownReporter:
             cost_str = self._c.cost(fmt_cost(cost), cost)
             table.add_row(
                 model,
-                fmt_tok(usage.input_tokens),
-                fmt_tok(usage.output_tokens),
-                fmt_tok(usage.cache_write_tokens),
-                fmt_tok(usage.cache_read_tokens),
+                self._c.nums(fmt_tok(usage.input_tokens)),
+                self._c.nums(fmt_tok(usage.output_tokens)),
+                self._c.nums(fmt_tok(usage.cache_write_tokens)),
+                self._c.nums(fmt_tok(usage.cache_read_tokens)),
                 cost_str,
             )
 
         table.add_separator()
         total_cost = sum(cost for _, (_, cost) in aggregated.items())
         n = len(sessions)
-        session_label = f"{n} session{'s' if n != 1 else ''} total"
+        session_label = f"{self._c.nums(str(n))} session{'s' if n != 1 else ''} total"
         total_cost_str = self._c.cost(fmt_cost(total_cost), total_cost)
         table.add_row(session_label, "", "", "", "", total_cost_str)
 
@@ -227,33 +238,55 @@ class MarkdownReporter:
     def _summary_section(self, period: WorkPeriod, same_date: bool) -> str:
         time_range = fmt_time_range(period.since, period.until, self.tz_offset, same_date)
         time_range = self._color_duration_in_range(time_range)
+        time_range = self._c.colorize_digits(time_range)
         lines = [_header("SUMMARY", time_range, self.markdown_tables), ""]
 
         table = Table(Col("Source"), Col("Summary"))
 
+        # Git row: show span between first and last commit if multiple commits
         if period.commits:
             n = len(period.commits)
             author_counts: dict[str, int] = {}
             for c in period.commits:
                 author_counts[c.author] = author_counts.get(c.author, 0) + 1
             authors_str = ", ".join(f"{name}" for name in sorted(author_counts))
-            summary = f"{n} commit{'s' if n != 1 else ''} · {authors_str}"
+            if n > 1:
+                span = period.commits[-1].datetime - period.commits[0].datetime
+                span_str = self._c.duration(fmt_duration(span))
+                summary = f"{self._c.nums(str(n))} commits over {span_str} · {authors_str}"
+            else:
+                summary = f"{self._c.nums('1')} commit · {authors_str}"
             table.add_row("Git", summary)
         else:
             table.add_row("Git", "no commits in window")
 
+        # CC row: cost first, then over X hours, then N sessions
         if period.cc_sessions:
-            aggregated = _aggregate_model_usage(period.cc_sessions)
-            models_str = ", ".join(sorted(aggregated))
-            n_sess = len(period.cc_sessions)
             cost_str = self._c.cost(fmt_cost(period.total_cost_usd), period.total_cost_usd)
-            summary = f"{n_sess} session{'s' if n_sess != 1 else ''} · {models_str} · {cost_str}"
+            n_sess = len(period.cc_sessions)
+            # Calculate total session duration
+            total_sess_dur = sum(
+                (s.end - s.start for s in period.cc_sessions), timedelta()
+            )
+            dur_str = self._c.duration(fmt_duration(total_sess_dur))
+            summary = (
+                f"{cost_str} over {dur_str} from "
+                f"{self._c.nums(str(n_sess))} session{'s' if n_sess != 1 else ''}"
+            )
             table.add_row("CC", summary)
         else:
             table.add_row("CC", "no sessions in window")
 
+        # Total row: duration before cost
+        if period.cc_sessions:
+            total_sess_dur = sum(
+                (s.end - s.start for s in period.cc_sessions), timedelta()
+            )
+            dur_str = self._c.duration(fmt_duration(total_sess_dur))
+        else:
+            dur_str = self._c.duration("~0.0h")
         total_cost_str = self._c.cost(fmt_cost(period.total_cost_usd), period.total_cost_usd)
-        table.add_row("Total", total_cost_str)
+        table.add_row("Total", f"{dur_str}  {total_cost_str}")
 
         lines.extend(table.render(markdown=self.markdown_tables, indent="  "))
         return "\n".join(lines)

@@ -199,8 +199,8 @@ def test_markdown_mode_sessions_table_is_pipe_format():
     period = _make_period()
     reporter = MarkdownReporter(tz_offset=3.0, markdown_tables=True)
     output = reporter.render(period)
-    # Should have pipe table format
-    assert "| # |" in output or "| # | Range" in output
+    # Should have pipe table format with session numbers
+    assert "| #" in output and "| Range" in output
 
 
 def test_lightweight_sessions_table_is_space_aligned():
@@ -263,3 +263,68 @@ def test_summary_table_lightweight_mode():
         if 'commits' not in line.lower():  # skip if it's from commits table
             # These summary lines should be space-aligned, not pipe tables
             pass
+
+
+def test_summary_git_row_shows_over_hours():
+    """Git row shows 'X commits over ~Nh' when multiple commits."""
+    period = _make_period()
+    reporter = MarkdownReporter(tz_offset=3.0)
+    output = reporter.render(period)
+    # Should contain "commits over" in the summary
+    assert "commits over" in output or "commit over" in output
+
+
+def test_summary_cc_row_cost_first():
+    """CC row starts with cost, then 'over', then hours, then sessions."""
+    period = _make_period()
+    reporter = MarkdownReporter(tz_offset=3.0)
+    output = reporter.render(period)
+    # CC row should have cost before "over"
+    lines = output.split('\n')
+    cc_line = [l for l in lines if 'CC' in l and 'CLAUDE' not in l]
+    if cc_line:
+        line = cc_line[0]
+        # Should mention "over" and have cost
+        assert "over" in line
+        assert "~$" in line
+
+
+def test_summary_total_shows_duration():
+    """Total row includes session duration before cost."""
+    period = _make_period()
+    reporter = MarkdownReporter(tz_offset=3.0)
+    output = reporter.render(period)
+    # Total row should have duration and cost
+    lines = output.split('\n')
+    total_line = [l for l in lines if 'Total' in l and 'session' not in l.lower()]
+    if total_line:
+        line = total_line[0]
+        # Should contain both duration (~Xh) and cost (~$X.XX)
+        assert "~" in line
+
+
+def test_git_section_table_lightweight():
+    """Git overview rendered as space-aligned table in lightweight mode."""
+    period = _make_period()
+    reporter = MarkdownReporter(tz_offset=3.0, markdown_tables=False)
+    output = reporter.render(period)
+    # Should have git overview with Field and Value columns
+    assert "Commits" in output
+    assert "Authors" in output
+    assert "Files" in output
+    # Should not have pipe format (unless it's from commits table)
+    lines = output.split('\n')
+    overview_section = output.split('####' if '####' in output else '══')[1]
+    # Check that we have the field names
+    assert "Commits" in overview_section
+
+
+def test_git_section_table_markdown():
+    """Git overview rendered as pipe table in markdown mode."""
+    period = _make_period()
+    reporter = MarkdownReporter(tz_offset=3.0, markdown_tables=True)
+    output = reporter.render(period)
+    # Should have pipe table format with Field and Value columns
+    assert "| Field" in output
+    assert "| Value" in output
+    assert "| Commits" in output

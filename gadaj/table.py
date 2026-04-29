@@ -75,6 +75,9 @@ class Table:
     def render(self, markdown: bool = False, indent: str = "  ") -> list[str]:
         """Render table in lightweight or Markdown format."""
         widths = self._widths()
+        # Enforce minimum width of 3 for Markdown mode across ALL rows (header, separator, data)
+        if markdown:
+            widths = [max(w, 3) for w in widths]
         lines = []
 
         if markdown:
@@ -84,7 +87,6 @@ class Table:
             # Alignment separator (standard Markdown: min 3 dashes)
             seps = []
             for c, w in zip(self._cols, widths):
-                w = max(w, 3)  # Ensure minimum width for standard Markdown
                 if c.align == "right":
                     seps.append("-" * (w - 1) + ":")
                 else:
