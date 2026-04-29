@@ -13,3 +13,5 @@
   earlier and newer input
 
 ## Todo
+- Before publishing we need to update the README and CHANGELOG as well. Please use Sonnet for the updating as I want everything to be correct.
+- And update also design.md and add an entry to journal.md.
