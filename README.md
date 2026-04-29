@@ -16,13 +16,13 @@ session transcripts and a coherent record of the day's work.
 ══ GIT  2026-04-28 10:00 – 13:25 EEST ════════════════════════════════
 
   Commits   8 · 51d38b6 – e60d59b
-  Authors   Samuel (8)
+  Authors   Samuel (7), Mikko (1)
   Files     7 changed · +672 / -7
 
-  Hash      Time   Author   Files      Message
-  `51d38b6` 10:02  Samuel   3 · +95/-8 Implement feature X
-  `8a2c1d9` 10:15  Samuel   1 · +12/-0 Fix typo
-  `e60d59b` 13:15  Samuel   3 · +565/–5 Refactor component Y
+  Hash       Time   Author  Files          Message
+  `51d38b6`  10:02  Samuel  3 · +95 / -8   Implement feature X
+  `8a2c1d9`  10:15  Samuel  1 · +12 / -0   Fix typo
+  `e60d59b`  13:15  Mikko   3 · +565 / -5  Refactor component Y
   (5 more commits...)
 
 ══ CLAUDE CODE  2026-04-28 10:00 – 13:25 EEST ════════════════════════
@@ -32,17 +32,18 @@ session transcripts and a coherent record of the day's work.
   Session 1  10:02 – 11:47  ~1.7h
   Session 2  12:10 – 13:24  ~1.2h   ← most recent
 
-  Model                      In    Out   Cache↑   Cache↓      Cost
-  claude-sonnet-4-6         180k  174k    293k     9.6M    ~$6.59
+  Model                      In    Out   Cache↑  Cache↓    Cost
+  claude-haiku-4-5-20251001  200k  283k    1.4M   60.7M  ~$7.39
+  claude-sonnet-4-6          180k  174k    293k    9.6M  ~$6.59
   ──────────────────────────────────────────────────────────────────
-  2 sessions total                                          ~$6.59
+  2 sessions total                                      ~$13.98
 
 ══ SUMMARY ═══════════════════════════════════════════════════════════
 
   Source  Summary
-  Git     8 commits over ~3.1h · Samuel
-  CC      ~$6.59 over ~2.9h from 2 sessions
-  Total   ~$6.59 over ~2.9h
+  Git     8 commits over ~3.1h · Samuel, Mikko
+  CC      ~$13.98 over ~2.9h from 2 sessions
+  Total   ~$13.98 over ~2.9h
 ```
 
 ---
