@@ -15,6 +15,96 @@ flush `wip.md`.
 
 ---
 
+## 2026-04-29 12:44 — Table formatter, --markdown flag, and alignment fixes
+
+Comprehensive refactor of the Markdown reporter to use a reliable tabular formatter,
+eliminating manual f-string column arithmetic and fixing misalignment issues with long
+model names. Introduced --markdown/-m flag for Markdown-formatted output (####
+headers, pipe tables) vs lightweight default (══ headers, space-aligned columns).
+
+### Key decisions
+
+**ANSI-aware column width calculation.** Created `gadaj/table.py` with a `Table` class
+that computes dynamic column widths while ignoring ANSI escape codes. The `_vlen(s)`
+function strips escape codes before measuring string length, and `_pad(s, width, align)`
+accounts for invisible characters when padding. This solves the long-model-name overflow
+problem without special-casing.
+
+**Two rendering modes in one Table class.** Rather than having separate code paths for
+lightweight vs Markdown, the `Table.render(markdown=False)` method switches format:
+- Lightweight (default): columns separated by two spaces, separator rows use `─`
+- Markdown: pipe table format `| col |` with alignment separators `| --- |`
+
+This keeps the data structure unified and prevents divergence between rendering modes.
+
+**Separator rows via add_separator().** The `Table` class supports explicit separators
+via `add_separator()`, which are skipped in Markdown mode (header sep already present)
+but rendered as `─` dashes in lightweight mode. This required careful handling in the
+render loop to treat `None` row differently from data rows.
+
+**All sections use Table for consistency.** Refactored five methods in `MarkdownReporter`:
+- `_git_section()`: key-value table (Commits, Authors, Files)
+- `_commits_table()`: pipe table always (readable in terminal)
+- `_cc_section()`: sessions table with dynamic #/Range/Notes columns
+- `_models_table()`: model usage with right-aligned numeric columns
+- `_summary_section()`: source/summary table
+
+Manual f-string arithmetic is eliminated; column widths are computed from data.
+
+**Headers change based on markdown_tables setting.** The `_header()` function now takes
+a `markdown_mode` parameter: returns `#### ` in Markdown mode, `══ ` in lightweight.
+All call sites updated to pass `self.markdown_tables`.
+
+**Markdown mode via --markdown/-m flag.** New CLI argument `--markdown` sets
+`markdown_tables=True` on the reporter, triggering pipe table format and `####` headers.
+Default remains lightweight mode for terminal readability and eye-friendly output.
+
+### What was built
+
+- New `gadaj/table.py` (118 lines): `Col` dataclass and `Table` class with ANSI-aware
+  column width calculation and dual rendering modes
+- Refactored `gadaj/reporters/markdown.py`: all five table-generating methods now use
+  `Table` for consistent, overflow-proof formatting
+- Added `--markdown/-m` flag in `gadaj/cli.py`
+- Comprehensive test suite: 44 new tests across table, color, utils, config, and
+  markdown reporter modules (134 total, all passing)
+
+### Testing
+
+- 17 tests for `Table` class: ANSI stripping, padding, markdown/lightweight render,
+  separators, max_width truncation, alignment
+- 8 tests for `_Colors` class from prior session
+- 10 new tests in `test_markdown_reporter.py`: markdown headers, session/models/summary
+  tables in both modes, long model name handling
+- All 134 tests pass; no breaking changes
+
+### Verification
+
+Ran `gadaj -w 30d` (lightweight) and `gadaj -w 30d -m` (markdown) with live data:
+- Long model name `claude-haiku-4-5-20251001` does not shift columns
+- Two-space gap visible between Cache↑ and Cache↓ columns in both modes
+- Headers switch: `══` to `####`, no trailing `═` padding
+- Sessions and models tables render cleanly in both formats
+- Pipe table alignment correct in Markdown mode; space alignment correct in lightweight
+
+### Commits
+
+| Hash | Datetime | Author | Message |
+|---|---|---|---|
+| `f7440ba` | 2026-04-29 12:44 | Samuel | Implement table formatter, --markdown flag, alignment fixes |
+
+### Stats
+
+| Item | Details |
+|---|---|
+| Commits | 1 |
+| Files | 8 changed, +615 / -54 |
+| Test count | 124 → 134 (+10 new tests) |
+| claude-haiku-4-5-20251001 | ~$2.20 (this session) |
+| **Total** | **~$2.20** |
+
+---
+
 ## 2026-04-29 12:10 — Datetime consistency, terminal coloring, cost thresholds
 
 Three major improvements to the Markdown reporter for better visual clarity and
