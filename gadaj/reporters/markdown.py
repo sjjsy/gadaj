@@ -130,8 +130,15 @@ class MarkdownReporter:
                     author_map[c.author] = color
                     palette_idx += 1
 
+        # Check if commits themselves span multiple dates (not just the window)
+        commits_same_date = same_date
+        if period.commits and len(period.commits) > 1:
+            first_local = period.commits[0].datetime + timedelta(hours=self.tz_offset)
+            last_local = period.commits[-1].datetime + timedelta(hours=self.tz_offset)
+            commits_same_date = first_local.date() == last_local.date()
+
         # Use "Time" for header when same_date, otherwise "Datetime"
-        dt_header = "Time" if same_date else "Datetime"
+        dt_header = "Time" if commits_same_date else "Datetime"
         table = Table(
             Col("Hash"),
             Col(dt_header),
@@ -141,7 +148,7 @@ class MarkdownReporter:
         )
         for c in period.commits:
             local_dt = c.datetime + timedelta(hours=self.tz_offset)
-            if same_date:
+            if commits_same_date:
                 dt_str = local_dt.strftime("%H:%M")
             else:
                 dt_str = local_dt.strftime("%Y-%m-%d %H:%M")

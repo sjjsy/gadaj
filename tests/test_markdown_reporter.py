@@ -345,12 +345,23 @@ def test_git_section_table_markdown():
 
 
 def test_commits_table_time_header_when_same_date():
-    """Commits table uses 'Time' header when window is same date."""
-    period = _make_period()  # same_date should be True for this fixture
+    """Commits table uses 'Time' header when commits span same date only."""
+    from gadaj.models import WorkPeriod, Commit
+    # Create a period with commits all on the same date
+    since = utc(2026, 4, 28, 10, 0)
+    until = utc(2026, 4, 28, 14, 0)
+    commits = [
+        Commit(hash="abc1234", datetime=utc(2026, 4, 28, 10, 30), author="Samuel",
+               message="Fix A", files_changed=1, insertions=10, deletions=0),
+        Commit(hash="def5678", datetime=utc(2026, 4, 28, 12, 30), author="Samuel",
+               message="Fix B", files_changed=1, insertions=10, deletions=0),
+    ]
+    period = WorkPeriod(since=since, until=until)
+    period.commits = commits
     reporter = MarkdownReporter(tz_offset=3.0, show_commits=True, markdown_tables=True)
     output = reporter.render(period)
-    # The period is 2026-04-28 10:00 to 14:00, so same_date=True
-    assert "| Time" in output or "Time" in output
+    # Commits are on same date, should use "Time" header
+    assert "| Time" in output
 
 
 def test_commits_table_datetime_header_when_multiday():

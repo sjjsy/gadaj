@@ -25,6 +25,8 @@ gadaj/                          ← installable package
 ├── config.py                   ← config file loading, author nicks, model pricing
 ├── models.py                   ← all dataclasses
 ├── utils.py                    ← pure functions: formatting, time parsing
+├── colors.py                   ← ANSI color helpers with enable/disable
+├── table.py                    ← ANSI-aware tabular formatter
 │
 ├── collectors/
 │   ├── __init__.py
@@ -353,7 +355,67 @@ def lookup_pricing(model: str, cfg: Config) -> tuple[float, float, float, float]
 
 ---
 
-## 8. Utilities (`utils.py`)
+## 8. Colors (`colors.py`)
+
+Conditional ANSI terminal coloring. The `_Colors` class wraps formatting functions and respects an `enabled` flag; when disabled, all methods return plain text.
+
+```python
+@dataclass
+class _Colors:
+    enabled: bool            # color output only if TTY
+    cost_warn_usd: float     # threshold for warn color
+    cost_alert_usd: float    # threshold for alert color
+
+    def dim(text: str) -> str:
+        """Label/fixed content → dim/grey."""
+
+    def duration(text: str) -> str:
+        """Duration values → cyan."""
+
+    def nums(text: str) -> str:
+        """Numeric values → dark blue."""
+
+    def cost(text: str, usd: float) -> str:
+        """Cost values → dim-yellow / dark-amber / dark-red by threshold."""
+
+    def colorize_digits(text: str) -> str:
+        """Color bare digit sequences blue, skipping digits inside existing ANSI color blocks."""
+
+    def apply_code(text: str, ansi_open: str) -> str:
+        """Wrap text in an arbitrary ANSI code."""
+```
+
+Auto-detection: color is enabled when `sys.stdout.isatty()` returns True. This preserves plain text when output is piped, redirected, or logged. The `cost()` method uses three-tier coloring: below `cost_warn` is dim-yellow; between `cost_warn` and `cost_alert` is dark golden amber (256-color `\x1b[38;5;136m`); at or above `cost_alert` is dark red.
+
+---
+
+## 9. Tables (`table.py`)
+
+ANSI-aware tabular formatter supporting two rendering modes: lightweight (space-aligned columns, `═` separators) and Markdown (pipe format, `| --- |` separators).
+
+```python
+@dataclass
+class Col:
+    """Column definition."""
+    header: str
+    align: Literal["left", "right"] = "left"
+    max_width: int | None = None
+
+class Table:
+    """Tabular data with ANSI escape code awareness."""
+
+    def __init__(self, *cols: Col): ...
+    def add_row(self, *values: str) -> None: ...
+    def add_separator(self) -> None: ...
+    def render(self, markdown: bool = False, indent: str = "") -> list[str]:
+        """Render as list of strings (one per line)."""
+```
+
+Key feature: column width calculation ignores ANSI escape codes (using `_vlen()` helper) but padding accounts for invisible characters (using `_pad()` helper). This prevents ANSI color codes from shifting column alignment. Separators are rendered as `─` chains in lightweight mode; in Markdown mode, they are `| --- |` and only shown once (after header). `max_width` columns truncate text with ellipsis if needed. Alignment is respected in both modes.
+
+---
+
+## 10. Utilities (`utils.py`)
 
 Pure functions only. No I/O, no subprocess, no config access. All are independently unit-testable.
 
@@ -386,7 +448,7 @@ def detect_tz_offset() -> float:
 
 ---
 
-## 9. CLI entrypoint (`cli.py`)
+## 11. CLI entrypoint (`cli.py`)
 
 `main()` is the `[project.scripts]` target. Its structure:
 

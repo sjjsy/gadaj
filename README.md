@@ -19,6 +19,12 @@ session transcripts and a coherent record of the day's work.
   Authors   Samuel (8)
   Files     7 changed · +672 / -7
 
+  Hash      Time   Author   Files      Message
+  `51d38b6` 10:02  Samuel   3 · +95/-8 Implement feature X
+  `8a2c1d9` 10:15  Samuel   1 · +12/-0 Fix typo
+  `e60d59b` 13:15  Samuel   3 · +565/–5 Refactor component Y
+  (5 more commits...)
+
 ══ CLAUDE CODE  2026-04-28 10:00 – 13:25 EEST ════════════════════════
 
   Sessions  2 in window
@@ -33,10 +39,10 @@ session transcripts and a coherent record of the day's work.
 
 ══ SUMMARY ═══════════════════════════════════════════════════════════
 
-  Window    ~3.4h  (2026-04-28 10:00 – 13:25 EEST)
-  Git       8 commits · Samuel
-  CC        2 sessions · claude-sonnet-4-6 · ~$6.59
-  Total                                                     ~$6.59
+  Source  Summary
+  Git     8 commits over ~3.1h · Samuel
+  CC      ~$6.59 over ~2.9h from 2 sessions
+  Total   ~$6.59 over ~2.9h
 ```
 
 ---
@@ -101,11 +107,14 @@ Python < 3.11; stdlib `tomllib` is used on Python 3.11+).
 ## Quickstart
 
 ```bash
-# Summarise the last 4 hours (default)
+# Summarise the last 4 hours (default, with commits table)
 gadaj
 
 # Everything since yesterday morning (commits shown by default)
 gadaj -s yesterday
+
+# Hide the commits table, show summary only
+gadaj -c
 
 # JSON output for an AI agent to draft a journal entry from
 gadaj -w 8h --json
@@ -191,11 +200,11 @@ on first run. To override for a specific repo, add `.gadaj.toml` at the repo roo
 
 [pricing]
 # (input, output, cache_write, cache_read) — $/MTok
-"claude-opus-4-7"           = [15.00, 75.00, 18.75, 1.500]
-"claude-opus-4-6"           = [15.00, 75.00, 18.75, 1.500]
-"claude-sonnet-4-6"         = [3.00, 15.00, 3.75, 0.300]
-"claude-haiku-4-5"          = [0.80, 4.00, 1.00, 0.080]
-"claude-haiku-4-5-20251001" = [0.80, 4.00, 1.00, 0.080]
+"claude-opus-4-7"           = [15.00, 75.00, 18.75,  1.500]
+"claude-opus-4-6"           = [15.00, 75.00, 18.75,  1.500]
+"claude-sonnet-4-6"         = [ 3.00, 15.00,  3.75,  0.300]
+"claude-haiku-4-5"          = [ 0.80,  4.00,  1.00,  0.080]
+"claude-haiku-4-5-20251001" = [ 0.80,  4.00,  1.00,  0.080]
 
 [defaults]
 window = "4h"
@@ -216,7 +225,7 @@ cost_alert = 5.0   # orange → red coloring boundary (USD)
 # Explicit author name → ANSI color code mapping for commits table.
 # If defined, these colors take precedence over the palette.
 # Authors not listed here use palette colors in order of first appearance.
-# "Samuel Sydänlammi" = 32   # green
+# "Samuel Marisa"     = 32   # green
 # "Mikko Lastname"    = 31   # red
 ```
 
