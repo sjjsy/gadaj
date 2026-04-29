@@ -15,6 +15,77 @@ flush `wip.md`.
 
 ---
 
+## 2026-04-29 12:10 — Datetime consistency, terminal coloring, cost thresholds
+
+Three major improvements to the Markdown reporter for better visual clarity and
+terminal experience.
+
+### Key decisions
+
+**Datetime consistency by window scope.** Rather than making each format function
+independently decide whether to abbreviate dates, the reporter computes `same_date`
+once per render (from `period.since/until` boundaries) and threads it through all
+format calls. This keeps the logic centralized and simplifies format functions.
+
+**Duration always shown in ranges.** `fmt_time_range()` and `fmt_session_range()`
+now compute and append duration (e.g. `~4.0h`) to their output. Format is
+`range_str  duration_str` with two spaces as separator, matching the existing
+session line format.
+
+**ANSI coloring without new dependencies.** A new `gadaj/colors.py` module
+provides a `_Colors` class with dim(), duration(), and cost() methods. Each
+method returns the text wrapped in ANSI escape codes if coloring is enabled, or
+plain text otherwise. This avoids a runtime dependency on colorama/rich and keeps
+the module testable.
+
+**Auto-detect TTY for coloring.** Coloring is disabled by default and auto-enabled
+when `sys.stdout.isatty()` returns True. This preserves plain text when output is
+piped, redirected, or logged, following Unix conventions. No new CLI flag needed.
+
+**Summary heading gets time range.** The SUMMARY section now displays the window
+range in its header (`══ SUMMARY  YYYY-MM-DD HH:MM – HH:MM EEST  ~Nh ══`) matching
+GIT and CC section format. The redundant `Window` line in the body was removed.
+
+**Config-driven cost thresholds.** New `[thresholds]` TOML section allows users to
+set `cost_warn` and `cost_alert` boundaries. Costs color from dark-yellow (< warn),
+dark-orange (warn ≤ cost < alert), to dark-red (≥ alert). Defaults: $1.00 and $5.00.
+
+### What was built
+
+- New `gadaj/colors.py` with conditional ANSI coloring (no dependencies)
+- Updated format functions: `period_same_date()`, `fmt_time_range()`, 
+  `fmt_session_range()` now accept `same_date` param and include duration
+- Enhanced `MarkdownReporter`: threads `same_date` and color through all sections,
+  moves time range to SUMMARY header, removes Window body line
+- Extended `Config`: `cost_warn_usd` and `cost_alert_usd` fields with TOML parsing
+- `cli.py` now passes `color=sys.stdout.isatty()` and threshold values to reporter
+
+### Testing
+
+- All 90 existing tests pass (no test changes needed — color=False by default)
+- Verified same-day formatting: "2026-04-28 13:00 – 17:00 EEST  ~4.0h" + HH:MM sessions
+- Verified multi-day formatting: "2026-04-28 23:00 – 2026-04-29 07:00 EEST  ~8.0h"
+- Verified color output: dim labels, cyan durations, red/orange/yellow costs by threshold
+- No new CLI flags or breaking changes
+
+### Commits
+
+| Hash | Datetime | Author | Message |
+|---|---|---|---|
+| `68a108d` | 2026-04-29 08:03 | Samuel | Show YYYY-MM-DD dates in ranges when spanning multiple days |
+| `6720358` | 2026-04-29 12:04 | Samuel | Add datetime consistency, terminal coloring, cost thresholds |
+
+### Stats
+
+| Item | Details |
+|---|---|
+| Commits | 2 |
+| Files | 5 changed, +144 / -307 |
+| claude-haiku-4-5 | ~$2.50 (this session) |
+| **Total** | **~$2.50** |
+
+---
+
 ## 2026-04-28 21:30 — gadaj v0.1 implementation
 
 Full package implemented from the spec in `wip.md`. The implementation is a
