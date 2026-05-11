@@ -145,7 +145,7 @@ All sources are queried against a single time window. These flags control it.
 
 | Flag | Short | Description |
 |---|---|---|
-| `--git-range A..B` | `-g` | Explicit hash range, overrides time window for git |
+| `--git-range A..B` | `-g` | Explicit hash range for git; if no `-w`/`-s`/`-u` given, derives CC window from commit timestamps |
 | `--git-last N` | | Last N commits, ignoring time window |
 | `--git-author NAME` | `-a` | Filter commits to this author (substring match) |
 | `--git-filter PATTERN` | `-f` | Filter by commit message (case-insensitive) |
@@ -182,6 +182,9 @@ gadaj -w 1d -f "software-factory"
 
 # One author's commits this week
 gadaj -s monday -a Samuel --no-cc
+
+# Commits and CC sessions in a range; window auto-derives from commit timestamps
+gadaj -g HEAD~5..HEAD
 
 # Pipe JSON to another tool
 gadaj -w 8h --json | jq '.summary'
