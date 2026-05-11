@@ -245,6 +245,13 @@ def main(argv: list[str] | None = None) -> None:
         else:
             print("warning: not a git repo or git not found", file=sys.stderr)
 
+    # If a commit range was given with no explicit time window, derive the window
+    # from the actual commit timestamps.
+    window_explicitly_set = args.since or args.window or args.until
+    if args.git_range and not window_explicitly_set and commits:
+        since = min(c.datetime for c in commits)
+        until = max(c.datetime for c in commits)
+
     if not args.no_cc:
         cc_collector = CCCollector(cfg=cfg, cc_file=args.cc_file)
         if cc_collector.available:
